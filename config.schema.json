@@ -2,7 +2,7 @@
     "pluginAlias": "TuyaLan",
     "pluginType": "platform",
     "singular": true,
-    "headerDisplay": "<p align='center'><img height='60px' src='https://user-images.githubusercontent.com/3979615/78354049-dc7ff780-75f6-11ea-8026-2f8bf81d8331.png'></p>\n\nBefore using the Tuya plugin you need to discover your devices by following [these instructions](https://github.com/AMoo-Miki/homebridge-tuya-lan/wiki/Setup-Instructions).\n\n",
+    "headerDisplay": "<p align='center'><img height='60px' src='https://user-images.githubusercontent.com/3979615/78354049-dc7ff780-75f6-11ea-8026-2f8bf81d8331.png'></p>\n\nBefore using the Tuya plugin you need to discover your devices by following [these instructions](https://github.com/adrianjagielak/homebridge-tuya-plus/blob/main/wiki/Get-Local-Keys-for-Your-Devices.md).\n\n",
     "footerDisplay": "",
     "schema": {
       "type": "object",
@@ -133,7 +133,7 @@
               "id": {
                 "type": "string",
                 "title": "Tuya ID",
-                "description": "If you don't have the Tuya ID or Key, follow the steps found on the <a href='https://github.com/AMoo-Miki/homebridge-tuya-lan/wiki/Setup-Instructions' target='_blank'>Setup Instructions</a> page.",
+                "description": "If you don't have the Tuya ID or Key, follow the steps found on the <a href='https://github.com/adrianjagielak/homebridge-tuya-plus/blob/main/wiki/Get-Local-Keys-for-Your-Devices.md' target='_blank'>Setup Instructions</a> page.",
                 "required": true,
                 "condition": {
                   "functionBody": "return model.devices && model.devices[arrayIndices].type !== 'null';"

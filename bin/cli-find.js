@@ -200,7 +200,7 @@ proxy.listen({port: program.port, sslCaDir: ROOT}, err => {
 
     QRCode.toString(`http://${address}:${port}/cert`, {type: 'terminal'}, function(err, url) {
         console.log(url);
-        console.log('\nFollow the instructions on https://github.com/AMoo-Miki/homebridge-tuya-lan/wiki/Setup-Instructions');
+        console.log('\nFollow the instructions on https://github.com/adrianjagielak/homebridge-tuya-plus/blob/main/wiki/Get-Local-Keys-for-Your-Devices.md');
         console.log(`Proxy IP: ${address}`);
         console.log(`Proxy Port: ${port}\n\n`);
     })
