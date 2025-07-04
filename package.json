@@ -1,7 +1,7 @@
 {
-  "name": "homebridge-tuya",
-  "version": "3.1.2-beta.1",
-  "description": "🏠 Offical Homebridge plugin for TuyAPI ",
+  "name": "homebridge-tuya-plus",
+  "version": "3.1.2",
+  "description": "A community-maintained Homebridge plugin for controlling Tuya devices locally over LAN. Includes new features, fixes, and updated device support.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -14,14 +14,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/iRayanKhan/homebridge-tuya.git"
+    "url": "git+https://github.com/adrianjagielak/homebridge-tuya-plus.git"
   },
   "author": "Rayan Khan",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/iRayanKhan/homebridge-tuya/issues"
+    "url": "https://github.com/adrianjagielak/homebridge-tuya-plus/issues"
   },
-  "homepage": "https://github.com/iRayanKhan/homebridge-tuya#readme",
+  "homepage": "https://github.com/adrianjagielak/homebridge-tuya-plus#readme",
   "dependencies": {
     "async": "^3.2.2",
     "commander": "^3.0.1",
