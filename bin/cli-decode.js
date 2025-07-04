@@ -43,7 +43,6 @@ const decodeLine = (key, input, log = true) => {
     const len = buffer.length;
     if (buffer.readUInt32BE(0) !== 0x000055aa || buffer.readUInt32BE(len - 4) !== 0x0000aa55) {
         console.log("*** Input doesn't match the expected signature:", buffer.readUInt32BE(0).toString(16).padStart(8, '0'), buffer.readUInt32BE(len - 4).toString(16).padStart(8, '0'));
-        return rl.prompt();
     }
 
     // Try 3.3
