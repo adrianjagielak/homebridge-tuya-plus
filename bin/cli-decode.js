@@ -87,7 +87,7 @@ const decodeLine = (key, input, log = true) => {
             console.log(`${('' + seq).padEnd(4)} Decoded ${cmd}>`, flag ? 'Ping' : 'Pong');
             break;
 
-        case 19:
+        case 19: {
             let decryptedMsg;
             try {
                 const decipher = crypto.createDecipheriv('aes-128-ecb', key, '');
@@ -117,6 +117,7 @@ const decodeLine = (key, input, log = true) => {
                 console.log(`${('' + seq).padEnd(4)}*Failed ${cmd}>`, raw.toString('hex'));
             }
             break;
+        }
 
         default:
             console.log(`Unknown ${cmd}>`, raw.toString('hex'));
