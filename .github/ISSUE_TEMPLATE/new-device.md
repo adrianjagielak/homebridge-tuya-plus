@@ -15,7 +15,10 @@ Example: Generic Brand Lightbulb with Hex Color support, and 255 brightness.
 Does this device work in any fashion in the plugin? 
 
 **Device Schema**
-Please print your devices schema below:
+Please print your devices schema below. Ideally, you should sign up for the Tuya Developer Platform and share the following from the Tuya API Explorer:
+* The **`category`** from **Smart Home Basic Service** > **Get Device List**.
+* The **`model`** from **IoT Core** > **Device Control** > **Query Things Data Model**.
+
 
 
 **Additional context**
