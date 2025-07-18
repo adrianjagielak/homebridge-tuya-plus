@@ -74,15 +74,9 @@ sudo npm install -g homebridge-tuya-plus
 1. Edit the config.json file to add your device types, and parameters. 
 2. Restart Homebridge
 
-
 ## Known Issues
 
 1. If your devices add, but you can't control them, make sure you entered the DataPoint "DP" values for your device. 
-
-## Troubleshooting
-1. Make sure the plugin is up-to date
-2. Check for existing issues
-
 
 ## Contributing
 
@@ -96,10 +90,12 @@ If you have new accessory logic for a new device, please add a function defined 
 * [CodeTheWeb](https://github.com/CodeTheWeb) - developer of [TuyaApi](https://github.com/codetheweb/tuyapi), who gratiously provided this repo's name.
 * [Oznu](https://github.com/oznu) - developer of Homebridge, added ```config.schema.json``` , fixed dependencies, and helped inspire this readME off his [gsh](https://github.com/oznu/homebridge-gsh) plugin.
 
-## License
+#
 
+Go check out my other Homebridge plugins:
 
-
-## Donating
-
-Please donate to a local pet shelter, or food pantry. It's been a wild time, but we can do our part by helping others. 
+* [homebridge-futurehome](https://github.com/adrianjagielak/homebridge-futurehome) ([npm](https://npmjs.com/package/homebridge-futurehome))
+* [homebridge-tuya-plus](https://github.com/adrianjagielak/homebridge-tuya-plus) ([npm](https://npmjs.com/package/homebridge-tuya-plus))
+* [homebridge-eqiva-swift-bridge](https://github.com/adrianjagielak/eqiva-smart-lock-bridge) ([npm](https://npmjs.com/package/homebridge-eqiva-swift-bridge))
+* [homebridge-intex-plus](https://github.com/adrianjagielak/homebridge-intex-plus) ([npm](https://npmjs.com/package/homebridge-intex-plus))
+* [homebridge-simple-router-status](https://github.com/adrianjagielak/homebridge-simple-router-status) ([npm](https://npmjs.com/package/homebridge-simple-router-status))
