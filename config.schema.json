@@ -196,13 +196,14 @@
               "type": "integer",
               "placeholder": "2",
               "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices] && ['TWLight', 'RGBTWLight', 'SimpleDimmer','RGBTWOutlet'].includes(model.devices[arrayIndices].type);"
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['TWLight', 'RGBTWLight', 'SimpleDimmer','RGBTWOutlet', 'FanLight'].includes(model.devices[arrayIndices].type);"
               }
             },
             "dpColorTemperature": {
               "type": "integer",
+              "placeholder": "3",
               "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices] && ['TWLight', 'RGBTWLight','RGBTWOutlet'].includes(model.devices[arrayIndices].type);"
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['TWLight', 'RGBTWLight','RGBTWOutlet', 'FanLight'].includes(model.devices[arrayIndices].type);"
               }
             },
             "minWhiteColor": {
@@ -244,7 +245,7 @@
               "type": "integer",
               "placeholder": "255",
               "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices] && ['RGBTWLight','RGBTWOutlet'].includes(model.devices[arrayIndices].type);"
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['RGBTWLight','RGBTWOutlet', 'FanLight'].includes(model.devices[arrayIndices].type);"
               }
             },
             "scaleWhiteColor": {
@@ -336,7 +337,7 @@
               "type": "integer",
               "placeholder": "7",
               "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices] && ['Convector', 'SimpleHeater'].includes(model.devices[arrayIndices].type);"
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['Convector', 'SimpleHeater', 'Fan', 'FanLight'].includes(model.devices[arrayIndices].type);"
               }
             },
             "dpDesiredTemperature": {
@@ -372,6 +373,13 @@
               "placeholder": "4",
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['Convector', 'Fan', 'FanLight'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "dpRotationDirection": {
+              "type": "integer",
+              "placeholder": "63",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['Fan', 'FanLight'].includes(model.devices[arrayIndices].type);"
               }
             },
             "maxSpeed": {

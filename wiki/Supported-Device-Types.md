@@ -487,10 +487,7 @@ It is common for `HEXHSB` devices to use white color temperature and brightness 
 ```
 
 ### Smart Fan Regulators and Accessories
-These are accessories that may act as a regulator switch or an inbuilt regulator to your ceiling fan. Most common options available on these devices are an on/off switch and speed controls generally controlled through two buttons one speed at a time in each direction, up and down. 
-
-There are two kinds of regulator devices: (1) the most common ones use 3 speed controls, and (2) others use 5 speed controls which are found compatible with most fan regulators in India, Australia, and the UK.
-  
+These are accessories that may act as a regulator switch or an inbuilt regulator to your ceiling fan. Supported features include on/off switching, speed controls (generally managed through two buttons, one speed at a time in each direction, up and down), and direction control (forward/reverse). There are two kinds of regulator devices: (1) the most common ones use 3 speed controls, and (2) others use 5 speed controls which are found compatible with most fan regulators in India, Australia, and the UK.
 
 ```json5
 {
@@ -501,20 +498,19 @@ There are two kinds of regulator devices: (1) the most common ones use 3 speed c
     "id": "032000123456789abcde",
     "key": "0123456789abcdef",
 
-
     /* Override the default datapoint identifier of activity */
     "dpActive": "1",
 
     /* Override the default datapoint identifier of rotation speed */
-    "dpRotationSpeed": "2"
+    "dpRotationSpeed": "2",
 
+    /* Override the default datapoint identifier of direction control (forward/reverse) */
+    "dpRotationDirection": 63
 }
 ```
 
 ### Smart Fan with Light
-These are accessories that may act as a regulator switch or an inbuilt regulator to your ceiling fan. Most common options available on these devices are an on/off switch and speed controls generally controlled through two buttons one speed at a time in each direction, up and down. 
-
-There are multiple kinds of devices with different speed, and light controls.
+These are accessories that combine fan and lighting control in one device. Supported features include on/off switching, speed controls (generally managed through two buttons, one speed at a time in each direction, up and down), direction control (forward/reverse), as well as light power, brightness, and color temperature controls. There are multiple kinds of devices with different speed and light control capabilities.
 
 ```json5
 {
@@ -530,7 +526,8 @@ There are multiple kinds of devices with different speed, and light controls.
     "dpBrightness": 22,
     "minBrightness": 1,
     "scaleBrightness": 9,
-            
+    "dpColorTemperature": 23,
+
     "dpActive": 60,
     "dpRotationSpeed": 62,
     "maxSpeed": 9,
