@@ -20,6 +20,7 @@ If you are looking for verified configurations for your specific device, please 
 |Garage Door|`GarageDoor`<sup>[10](#garage-doors)</sup>|Smart garage doors or garage door openers <small>([instructions](#garage-doors))</small>|
 |Simple Blinds|`SimpleBlinds`<sup>[11](#simple-blinds)</sup>|Smart blinds and smart switches that control blinds <small>([instructions](#simple-blinds))</small>|
 |Simple Blinds2|`SimpleBlinds2`<sup>[11](#simple-blinds)</sup>|Smart blinds and smart switches that control blinds(Use if simple Blinds (1) doesn't work for you. <small>([instructions](#simple-blinds))</small>|
+|Vertical Blinds with Tilt|`VerticalBlindsWithTilt`<sup>[11](#vertical-blinds-with-tilt)</sup>|Smart vertical blinds with open/close and panel rotation <small>([instructions](#vertical-blinds-with-tilt))</small>|
 |Smart Plug w/ White and Color Lights|`RGBTWOutlet`<sup>[12](#outlets-with-white-and-color-lights)</sup>|Smart plugs that have controllable RGBTW LEDs <small>([instructions](#outlets-with-white-and-color-lights))</small>|
 |Smart Fan Regulator|`SimpleFanAccessory`<sup>[more](#smart-fan-regulators-and-accessories)</sup>|Smart Fan Regulators that have controllable Speeds <small>([instructions](#smart-fan-regulators-and-accessories))</small>|
 |Smart Fan with Light|`SimpleFanLightAccessory`<sup>[more](#smart-fan-with-light)</sup>|Smart Fan devices that have controllable Speeds, Directions and a built-in Light<small>([instructions](#smart-fan-with-light))</small>|
@@ -404,6 +405,35 @@ Normally the blinds don't report their position. This plugin attempts to time th
     /* If the app reports open when the blinds are closed, 
        and reports closed when they are open */
     "flipState": true
+}
+```
+
+### Vertical Blinds with Tilt
+Support for Tuya/Graywind Smart Vertical Blinds with open/close (retract/extend) AND panel rotation (tilt). In order to handle setting both the open/close position AND the rotation simultaneously with an automation, configure the timeToClose value in seconds to be at least the amount of time it takes your blinds to close. The rotation command will be queued up to send after this delay. On my 7-foot-wide blinds, this was 20 seconds. Default is 30.
+
+#### Minimal Configuration
+```json
+{
+  "name": "Bedroom Blinds",
+  "type": "VerticalBlindsWithTilt",
+  "id": "032000123456789abcde",
+  "key": "0123456789abcdef"
+}
+```
+
+#### Full Configuration
+```json
+{
+  "name": "Living Room Blinds",
+  "type": "VerticalBlindsWithTilt",
+  "manufacturer": "Tuya",
+  "model": "Smart Vertical Blinds",
+  "id": "032000123456789abcde",
+  "key": "0123456789abcdef",
+  "dpAction": 1,
+  "dpTilt": 2,
+  "dpTiltState": 3,
+  "timeToClose": 30
 }
 ```
 
