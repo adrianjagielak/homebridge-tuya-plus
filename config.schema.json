@@ -79,6 +79,10 @@
                   "enum": ["SimpleBlinds"]
                 },
                 {
+                  "title": "Vertical Blinds with Tilt",
+                  "enum": ["VerticalBlindsWithTilt"]
+                },
+                {
                   "title": "Smart Plug w/ White and Color Lights",
                   "enum": ["RGBTWOutlet"]
                 },
@@ -496,6 +500,14 @@
               "placeholder": "0",
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['SimpleBlinds'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "timeToClose": {
+              "type": "integer",
+              "placeholder": "30",
+              "description": "Time in seconds for blinds to fully open or close",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['VerticalBlindsWithTilt'].includes(model.devices[arrayIndices].type);"
               }
             },
             "dpLight": {
