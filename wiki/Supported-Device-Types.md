@@ -24,11 +24,30 @@ If you are looking for verified configurations for your specific device, please 
 |Smart Plug w/ White and Color Lights|`RGBTWOutlet`<sup>[12](#outlets-with-white-and-color-lights)</sup>|Smart plugs that have controllable RGBTW LEDs <small>([instructions](#outlets-with-white-and-color-lights))</small>|
 |Smart Fan Regulator|`SimpleFanAccessory`<sup>[more](#smart-fan-regulators-and-accessories)</sup>|Smart Fan Regulators that have controllable Speeds <small>([instructions](#smart-fan-regulators-and-accessories))</small>|
 |Smart Fan with Light|`SimpleFanLightAccessory`<sup>[more](#smart-fan-with-light)</sup>|Smart Fan devices that have controllable Speeds, Directions and a built-in Light<small>([instructions](#smart-fan-with-light))</small>|
+|Smart Switch|`Switch`<sup>[13](#switch)</sup>|Smart switches that just turn on and off <small>([instructions](#switch))</small>| 
 
 
 
 
 ## Additional Parameters
+
+### Switch
+These are swich gangs
+
+```json5
+{
+    "name": "My Switch",
+    "type": "Switch",
+    "manufacturer": "Tuya",
+    "model": "Tuya Switch",
+    "id": "032000123456789abcde",
+    "key": "0123456789abcdef",
+
+    /* Define number of switches it support */
+    "switchCount": 3,
+}
+```
+
 ### Outlets
 These are plugs with a single outlet that can only be turned on or off.
 
