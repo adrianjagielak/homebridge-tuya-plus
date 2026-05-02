@@ -31,6 +31,10 @@
                   "enum": ["null"]
                 },
                 {
+                  "title": "Switch Gang / Basic Switch",
+                  "enum": ["Switch"]
+                },                
+                {
                   "title": "Smart Plug / Barely Smart Power Strip",
                   "enum": ["Outlet"]
                 },
@@ -145,6 +149,13 @@
               "description": "Anything you'd like to use to help identify this device.",
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices].type !== 'null';"
+              }
+            },
+            "switchCount": {
+              "type": "integer",
+              "placeholder": "3",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['Switch'].includes(model.devices[arrayIndices].type);"
               }
             },
             "voltsId": {

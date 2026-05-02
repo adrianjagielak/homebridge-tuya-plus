@@ -508,6 +508,33 @@ Schema/DP's:
 
 # Switch
 
+**Tuya Smart Switch**
+
+Tested plugin version: ```2.0.1```
+
+Tested by: [@iHunterX](https://github.com/iHunterX)
+
+Capabilities:
+- [X] On/Off
+
+Config: 
+```json
+
+            {
+                "type": "Switch",
+                "name": "Main Lights",
+                "id": "xxx",
+                "key": "xxx",
+                "manufacturer": "Tuya",
+                "model": "Smart WiFi Switch",
+                "switchCount": 3
+            }
+
+```
+
+Schema/DP's:
+```
+```
 
 # Thermostat
 
