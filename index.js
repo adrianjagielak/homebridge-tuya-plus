@@ -27,6 +27,10 @@ const VerticalBlindsWithTilt = require('./lib/VerticalBlindsWithTilt');
 
 const PLUGIN_NAME = 'homebridge-tuya-plus';
 const PLATFORM_NAME = 'TuyaLan';
+// Seed used to derive accessory UUIDs. Must remain 'homebridge-tuya' so that
+// devices already paired with HomeKit keep their existing identity (names,
+// rooms, automations).
+const UUID_SEED = 'homebridge-tuya';
 const DEFAULT_DISCOVER_TIMEOUT = 60000;
 
 const CLASS_DEF = {
@@ -78,7 +82,7 @@ class TuyaLan {
             return false;
         }
 
-        this._expectedUUIDs = this.config.devices.map(device => UUID.generate(PLUGIN_NAME +(device.fake ? ':fake:' : ':') + device.id));
+        this._expectedUUIDs = this.config.devices.map(device => UUID.generate(UUID_SEED +(device.fake ? ':fake:' : ':') + device.id));
 
         this.api.on('didFinishLaunching', () => {
             this.discoverDevices();
@@ -122,7 +126,7 @@ class TuyaLan {
                 const device = new TuyaAccessory({
                     ...devices[config.id], ...config,
                     log: this.log,
-                    UUID: UUID.generate(PLUGIN_NAME + ':' + config.id),
+                    UUID: UUID.generate(UUID_SEED + ':' + config.id),
                     connect: false
                 });
                 this.addAccessory(device);
@@ -133,7 +137,7 @@ class TuyaLan {
             this.addAccessory(new TuyaAccessory({
                 ...config,
                 log: this.log,
-                UUID: UUID.generate(PLUGIN_NAME + ':fake:' + config.id),
+                UUID: UUID.generate(UUID_SEED + ':fake:' + config.id),
                 connect: false
             }));
         });
@@ -149,7 +153,7 @@ class TuyaLan {
                     const device = new TuyaAccessory({
                         ...devices[deviceId],
                         log: this.log,
-                        UUID: UUID.generate(PLUGIN_NAME + ':' + deviceId),
+                        UUID: UUID.generate(UUID_SEED + ':' + deviceId),
                         connect: false
                     });
                     this.addAccessory(device);
