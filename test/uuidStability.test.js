@@ -54,7 +54,7 @@ describe('UUID stability against v3.4.0', () => {
     // resets on upgrade.
     const fixtures = [
         {
-            seed: 'homebridge-tuya:bf1234567890abcdef1235',
+            seed: 'homebridge-tuya:bf1234567890abcdef1234',
             uuid: 'f7bd0a51-7bb8-4405-9ea6-d3da81023f2f',
         },
         {
