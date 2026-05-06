@@ -21,6 +21,7 @@ If you are looking for verified configurations for your specific device, please 
 |Simple Blinds|`SimpleBlinds`<sup>[11](#simple-blinds)</sup>|Smart blinds and smart switches that control blinds <small>([instructions](#simple-blinds))</small>|
 |Simple Blinds2|`SimpleBlinds2`<sup>[11](#simple-blinds)</sup>|Smart blinds and smart switches that control blinds(Use if simple Blinds (1) doesn't work for you. <small>([instructions](#simple-blinds))</small>|
 |Vertical Blinds with Tilt|`VerticalBlindsWithTilt`<sup>[11](#vertical-blinds-with-tilt)</sup>|Smart vertical blinds with open/close and panel rotation <small>([instructions](#vertical-blinds-with-tilt))</small>|
+|Percent Control Blinds|`PercentBlinds`<sup>[11](#percent-control-blinds)</sup>|Blinds that natively report and accept a percentage position via a `percent_control` datapoint <small>([instructions](#percent-control-blinds))</small>|
 |Smart Plug w/ White and Color Lights|`RGBTWOutlet`<sup>[12](#outlets-with-white-and-color-lights)</sup>|Smart plugs that have controllable RGBTW LEDs <small>([instructions](#outlets-with-white-and-color-lights))</small>|
 |Smart Fan Regulator|`SimpleFanAccessory`<sup>[more](#smart-fan-regulators-and-accessories)</sup>|Smart Fan Regulators that have controllable Speeds <small>([instructions](#smart-fan-regulators-and-accessories))</small>|
 |Smart Fan with Light|`SimpleFanLightAccessory`<sup>[more](#smart-fan-with-light)</sup>|Smart Fan devices that have controllable Speeds, Directions and a built-in Light<small>([instructions](#smart-fan-with-light))</small>|
@@ -453,6 +454,43 @@ Support for Tuya/Graywind Smart Vertical Blinds with open/close (retract/extend)
   "dpTilt": 2,
   "dpTiltState": 3,
   "timeToClose": 30
+}
+```
+
+### Percent Control Blinds
+These are blinds or roller shades that natively report their current position and accept a target position as a percentage via a `percent_control` datapoint. Unlike `SimpleBlinds`, no timing calibration is needed — the device reports its actual position directly.
+
+#### Minimal Configuration
+```json
+{
+    "name": "My Blinds",
+    "type": "PercentBlinds",
+    "id": "032000123456789abcde",
+    "key": "0123456789abcdef"
+}
+```
+
+#### Full Configuration
+```json5
+{
+    "name": "My Blinds",
+    "type": "PercentBlinds",
+    "manufacturer": "Tuya",
+    "model": "Smart Roller Blind",
+    "id": "032000123456789abcde",
+    "key": "0123456789abcdef",
+
+    /* Additional parameters to override defaults only if needed */
+
+    /* Override the default datapoint identifier for setting target position (0–100) */
+    "dpPercentControl": "2",
+
+    /* Override the default datapoint identifier for reading current position (0–100).
+       Use "3" if your device reports position on a separate datapoint from control. */
+    "dpPercentState": "2",
+
+    /* If the device reports 0 as fully open instead of fully closed, flip the range */
+    "flipState": true
 }
 ```
 
