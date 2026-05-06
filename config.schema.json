@@ -7,23 +7,27 @@
   "schema": {
     "type": "object",
     "properties": {
+      "name": {
+        "title": "Name",
+        "type": "string",
+        "default": "Tuya LAN"
+      },
       "discoverTimeout": {
         "title": "Device IP auto-discovery timeout",
         "type": "integer",
         "minimum": 0,
         "placeholder": "Timeout (millisecond) for device IP address discovery",
-        "default": 60000,
-        "required": false
+        "default": 60000
       },
       "devices": {
         "type": "array",
         "orderable": false,
         "items": {
           "type": "object",
+          "required": ["type", "name", "id", "key"],
           "properties": {
             "type": {
               "type": "string",
-              "required": true,
               "default": "null",
               "oneOf": [
                 {
@@ -107,7 +111,6 @@
             "name": {
               "type": "string",
               "description": "Anything you'd like to use to identify this device. You can always change the name from within the Home app later.",
-              "required": true,
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices].type !== 'null';"
               }
@@ -116,7 +119,6 @@
               "type": "string",
               "title": "Tuya ID",
               "description": "If you don't have the Tuya ID or Key, follow the steps found on the <a href='https://github.com/adrianjagielak/homebridge-tuya-plus/blob/main/wiki/Get-Local-Keys-for-Your-Devices.md' target='_blank'>Setup Instructions</a> page.",
-              "required": true,
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices].type !== 'null';"
               }
@@ -124,7 +126,6 @@
             "key": {
               "title": "Tuya Key",
               "type": "string",
-              "required": true,
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices].type !== 'null';"
               }
@@ -132,7 +133,6 @@
             "ip": {
               "title": "IP Address",
               "type": "string",
-              "required": false,
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices].type !== 'null';"
               }
