@@ -260,14 +260,14 @@
               "type": "integer",
               "placeholder": "255",
               "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices] && ['RGBTWLight','RGBTWOutlet', 'FanLight'].includes(model.devices[arrayIndices].type);"
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['TWLight','RGBTWLight','RGBTWOutlet', 'FanLight'].includes(model.devices[arrayIndices].type);"
               }
             },
             "scaleWhiteColor": {
               "type": "integer",
               "placeholder": "255",
               "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices] && ['RGBTWLight','RGBTWOutlet'].includes(model.devices[arrayIndices].type);"
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['TWLight','RGBTWLight','RGBTWOutlet'].includes(model.devices[arrayIndices].type);"
               }
             },
             "outletCount": {
