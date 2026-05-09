@@ -237,6 +237,34 @@ describe('getDividedStateAsync', () => {
     });
 });
 
+describe('setMultiState (legacy callback)', () => {
+    test('skips silently and invokes callback without error when not connected (issue #34)', () => {
+        const { instance, device } = make({ '1': false });
+        device.connected = false;
+        const cb = jest.fn();
+        instance.setMultiState({ '1': true }, cb);
+        expect(device.update).not.toHaveBeenCalled();
+        expect(cb).toHaveBeenCalledWith();
+    });
+
+    test('tolerates a missing callback when not connected', () => {
+        const { instance, device } = make({ '1': false });
+        device.connected = false;
+        expect(() => instance.setMultiState({ '1': true })).not.toThrow();
+    });
+});
+
+describe('setMultiStateLegacy (legacy callback)', () => {
+    test('skips silently and invokes callback without error when not connected (issue #34)', () => {
+        const { instance, device } = make();
+        device.connected = false;
+        const cb = jest.fn();
+        instance.setMultiStateLegacy({ '1': true }, cb);
+        expect(device.update).not.toHaveBeenCalled();
+        expect(cb).toHaveBeenCalledWith();
+    });
+});
+
 // ---------------------------------------------------------------------------
 // Utility helpers
 // ---------------------------------------------------------------------------
