@@ -178,10 +178,11 @@ describe('setStateAsync', () => {
         expect(device.update).not.toHaveBeenCalled();
     });
 
-    test('throws when device is not connected', () => {
+    test('skips silently when device is not connected (issue #34)', () => {
         const { instance, device } = make({ '1': false });
         device.connected = false;
-        expect(() => instance.setStateAsync('1', true)).toThrow('Not connected');
+        expect(() => instance.setStateAsync('1', true)).not.toThrow();
+        expect(device.update).not.toHaveBeenCalled();
     });
 });
 
@@ -199,6 +200,13 @@ describe('setMultiStateAsync', () => {
         instance.setMultiStateAsync({ '1': true, '2': 50 });
         expect(device.update).not.toHaveBeenCalled();
     });
+
+    test('skips silently when device is not connected (issue #34)', () => {
+        const { instance, device } = make({ '1': false });
+        device.connected = false;
+        expect(() => instance.setMultiStateAsync({ '1': true, '2': 50 })).not.toThrow();
+        expect(device.update).not.toHaveBeenCalled();
+    });
 });
 
 describe('setMultiStateLegacyAsync', () => {
@@ -207,6 +215,13 @@ describe('setMultiStateLegacyAsync', () => {
         instance.setMultiStateLegacyAsync({ '1': true, '3': '2' });
         expect(device.update).toHaveBeenCalledTimes(1);
         expect(device.update).toHaveBeenCalledWith({ '1': true, '3': '2' });
+    });
+
+    test('skips silently when device is not connected (issue #34)', () => {
+        const { instance, device } = make();
+        device.connected = false;
+        expect(() => instance.setMultiStateLegacyAsync({ '1': true })).not.toThrow();
+        expect(device.update).not.toHaveBeenCalled();
     });
 });
 
@@ -219,6 +234,34 @@ describe('getDividedStateAsync', () => {
     test('throws when state value is not finite', () => {
         const { instance } = make({ '5': 'bad' });
         expect(() => instance.getDividedStateAsync('5', 10)).toThrow();
+    });
+});
+
+describe('setMultiState (legacy callback)', () => {
+    test('skips silently and invokes callback without error when not connected (issue #34)', () => {
+        const { instance, device } = make({ '1': false });
+        device.connected = false;
+        const cb = jest.fn();
+        instance.setMultiState({ '1': true }, cb);
+        expect(device.update).not.toHaveBeenCalled();
+        expect(cb).toHaveBeenCalledWith();
+    });
+
+    test('tolerates a missing callback when not connected', () => {
+        const { instance, device } = make({ '1': false });
+        device.connected = false;
+        expect(() => instance.setMultiState({ '1': true })).not.toThrow();
+    });
+});
+
+describe('setMultiStateLegacy (legacy callback)', () => {
+    test('skips silently and invokes callback without error when not connected (issue #34)', () => {
+        const { instance, device } = make();
+        device.connected = false;
+        const cb = jest.fn();
+        instance.setMultiStateLegacy({ '1': true }, cb);
+        expect(device.update).not.toHaveBeenCalled();
+        expect(cb).toHaveBeenCalledWith();
     });
 });
 

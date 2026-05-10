@@ -5,7 +5,7 @@ const { makeInstance, makeMockCharacteristic } = require('./support/mocks');
 
 function makeLight(state = {}, context = {}) {
     const result = makeInstance(RGBTWLightAccessory, state, { colorFunction: 'HEXHSB', ...context });
-    const { instance } = result;
+    const { instance, device } = result;
 
     // Set up the state that _registerCharacteristics would normally establish
     instance.dpPower = '1';
@@ -16,6 +16,8 @@ function makeLight(state = {}, context = {}) {
     instance.cmdWhite = 'white';
     instance.cmdColor = 'colour';
     instance.colorFunction = 'HEXHSB';
+    instance.minWhiteColor = device.context.minWhiteColor ?? 140;
+    instance.maxWhiteColor = device.context.maxWhiteColor ?? 400;
 
     // Provide the cross-characteristic references _setHueSaturation writes to
     instance.characteristicColorTemperature = makeMockCharacteristic(0);
@@ -64,8 +66,7 @@ describe('RGBTWLightAccessory.setBrightness', () => {
 // ---------------------------------------------------------------------------
 describe('RGBTWLightAccessory.getColorTemperature', () => {
     test('returns minWhiteColor when in color mode', () => {
-        const { instance, device } = makeLight({ '2': 'colour' });
-        device.context.minWhiteColor = 140;
+        const { instance } = makeLight({ '2': 'colour' }, { minWhiteColor: 140 });
         expect(instance.getColorTemperature()).toBe(140);
     });
 
@@ -73,6 +74,35 @@ describe('RGBTWLightAccessory.getColorTemperature', () => {
         const { instance } = makeLight({ '2': 'white', '4': 255 });
         // convertColorTemperatureFromTuyaToHomeKit(255) = 140
         expect(instance.getColorTemperature()).toBe(140);
+    });
+
+    test('returns a finite default when minWhiteColor is not configured (issue #34)', () => {
+        const { instance } = makeLight({ '2': 'colour' });
+        const result = instance.getColorTemperature();
+        expect(typeof result).toBe('number');
+        expect(Number.isFinite(result)).toBe(true);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// setColorTemperature
+// ---------------------------------------------------------------------------
+describe('RGBTWLightAccessory.setColorTemperature', () => {
+    test('does not throw when device is not connected (issue #34)', () => {
+        const { instance, device } = makeLight({ '2': 'white', '4': 255 });
+        instance.characteristicHue = makeMockCharacteristic(0);
+        instance.characteristicSaturation = makeMockCharacteristic(0);
+        device.connected = false;
+        expect(() => instance.setColorTemperature(200)).not.toThrow();
+        expect(device.update).not.toHaveBeenCalled();
+    });
+
+    test('writes color temperature when device is connected', () => {
+        const { instance, device } = makeLight({ '2': 'white', '4': 255 });
+        instance.characteristicHue = makeMockCharacteristic(0);
+        instance.characteristicSaturation = makeMockCharacteristic(0);
+        instance.setColorTemperature(200);
+        expect(device.update).toHaveBeenCalled();
     });
 });
 
@@ -133,11 +163,21 @@ describe('RGBTWLightAccessory._setHueSaturation', () => {
     });
 
     test('updates characteristicColorTemperature to minWhiteColor after firing', async () => {
-        const { instance } = makeLight({ '2': 'colour', '5': '00000000b46464' });
-        instance.device.context.minWhiteColor = 140;
+        const { instance } = makeLight({ '2': 'colour', '5': '00000000b46464' }, { minWhiteColor: 140 });
         const p = instance.setHue(180);
         jest.advanceTimersByTime(500);
         await p;
         expect(instance.characteristicColorTemperature.updateValue).toHaveBeenCalledWith(140);
+    });
+
+    test('updates characteristicColorTemperature to a finite default when minWhiteColor unset (issue #34)', async () => {
+        const { instance } = makeLight({ '2': 'colour', '5': '00000000b46464' });
+        const p = instance.setHue(180);
+        jest.advanceTimersByTime(500);
+        await p;
+        const calls = instance.characteristicColorTemperature.updateValue.mock.calls;
+        const lastValue = calls[calls.length - 1][0];
+        expect(typeof lastValue).toBe('number');
+        expect(Number.isFinite(lastValue)).toBe(true);
     });
 });
