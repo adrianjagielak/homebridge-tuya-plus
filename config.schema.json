@@ -83,6 +83,10 @@
                   "enum": ["GarageDoor"]
                 },
                 {
+                  "title": "Simple Garage Door (Open/Stop/Close)",
+                  "enum": ["SimpleGarageDoor"]
+                },
+                {
                   "title": "Simple Blinds",
                   "enum": ["SimpleBlinds"]
                 },
@@ -491,6 +495,27 @@
               "placeholder": "2",
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['GarageDoor'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "dpOpen": {
+              "type": "integer",
+              "placeholder": "1",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['SimpleGarageDoor'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "dpStop": {
+              "type": "integer",
+              "placeholder": "2",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['SimpleGarageDoor'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "dpClose": {
+              "type": "integer",
+              "placeholder": "3",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['SimpleGarageDoor'].includes(model.devices[arrayIndices].type);"
               }
             },
             "flipState": {
