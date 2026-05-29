@@ -18,6 +18,7 @@ If you are looking for verified configurations for your specific device, please 
 |Simple Dimmer|`SimpleDimmer`<sup>[8](#simple-dimmers)</sup>|Dimmer switches with power control <small>([instructions](#simple-dimmers))</small>|
 |Simple Heater|`SimpleHeater`<sup>[9](#simple-heaters)</sup>|Heating solutions with only temperature control <small>([instructions](#simple-heaters))</small>|
 |Garage Door|`GarageDoor`<sup>[10](#garage-doors)</sup>|Smart garage doors or garage door openers <small>([instructions](#garage-doors))</small>|
+|Simple Garage Door|`SimpleGarageDoor`<sup>[10](#simple-garage-doors)</sup>|Garage doors and sliding gate openers that expose only three momentary action DPs: open, stop, close <small>([instructions](#simple-garage-doors))</small>|
 |Simple Blinds|`SimpleBlinds`<sup>[11](#simple-blinds)</sup>|Smart blinds and smart switches that control blinds <small>([instructions](#simple-blinds))</small>|
 |Simple Blinds2|`SimpleBlinds2`<sup>[11](#simple-blinds)</sup>|Smart blinds and smart switches that control blinds(Use if simple Blinds (1) doesn't work for you. <small>([instructions](#simple-blinds))</small>|
 |Vertical Blinds with Tilt|`VerticalBlindsWithTilt`<sup>[11](#vertical-blinds-with-tilt)</sup>|Smart vertical blinds with open/close and panel rotation <small>([instructions](#vertical-blinds-with-tilt))</small>|
@@ -399,6 +400,47 @@ While still in early testing, you can use this to open and close the garage door
     /* If the app reports open when the door is closed, 
        and reports closed when it is open */
     "flipState": true
+}
+```
+
+### Simple Garage Doors
+For very basic garage door openers and sliding gate controllers that expose only three momentary action DPs — one to open, one to stop, one to close — with no position or status feedback. The plugin tracks the target state locally and persists it across restarts, so HomeKit always reflects whatever was last requested. Triggering a change sends the stop command first (so reversing direction mid-motion works; it is a no-op when the gate is idle) and then the open or close command. There is no obstruction detection.
+
+```json5
+{
+    "name": "My Sliding Gate",
+    "type": "SimpleGarageDoor",
+    "manufacturer": "Generic",
+    "model": "Generic Sliding Gate Controller",
+    "id": "032000123456789abcde",
+    "key": "0123456789abcdef",
+
+    /* Additional parameters to override defaults only if needed */
+
+    /* Override the default datapoint identifier for the open action */
+    "dpOpen": 1,
+
+    /* Override the default datapoint identifier for the stop action */
+    "dpStop": 2,
+
+    /* Override the default datapoint identifier for the close action */
+    "dpClose": 3,
+
+    /* Optional. If set, exposes an extra stateful switch that mirrors
+       whether the gate is currently open in HomeKit's view. Tapping it
+       ON triggers a partial-open: the gate opens and then stops itself
+       this many milliseconds after the device acknowledges the open,
+       leaving the gate partially open. Tapping it OFF triggers a
+       standard full close. Useful for letting someone pass through
+       briefly. Leave unset to skip the switch. */
+    "partialOpenMs": 2000,
+
+    /* Optional. Exposes extra Force Open and Force Close momentary
+       switches alongside the main GarageDoorOpener. They drive the gate
+       through the same queue as the main toggle, but being plain
+       switches they can be used in HomeKit automations (which won't
+       accept GarageDoorOpener targets directly). Default false. */
+    "forceSwitches": true
 }
 ```
 
