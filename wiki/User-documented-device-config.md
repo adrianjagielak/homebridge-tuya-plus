@@ -17,6 +17,63 @@ Below is a list of configurations for devices by users of the plugin. Please fol
 
 # Dimmer
 
+## Wled Dimmer
+
+**Treatlife Dimmable Smart Plug for Lamps**
+
+
+
+Tested plugin version: ```2.0.1```
+
+Tested by: [@benwtf](https://www.github.com/benwtf)
+
+Link to buy: [Amazon](https://www.amazon.com/Treatlife-Dimmer-Halogen-Incandescent-Outlets/dp/B08LPYXK6L/ref=sr_1_2_sspa)
+
+Capabilities: 
+- [X] On/Off
+- [X] Dimming
+- [ ] Timer (Use Tuya app)
+- [ ] Dimming Config (Use Tuya app)
+
+Config: 
+```json
+            {
+                "type": "WledDimmer",
+                "name": "Lamp",
+                "id": "xxx",
+                "key": "xxx",
+                "manufacturer": "Treatlife",
+                "model": "WiFi Smart Dimmer Plug",
+                "scaleBrightness": 1000,
+				"minBrightness": 10,
+				"syncBrightnessToWled": "192.168.1.239",
+				"presetEffects": [
+					{
+						"name": "White Static",
+						"id": 0,
+						"staticColor": "#ffffff"
+					},
+					{
+						"name": "Cyan Static",
+						"id": 0,
+						"staticColor": "#5cecd9"
+					},
+					{
+						"name": "Juggle",
+						"id": 130
+					},
+					{
+						"name": "Fire",
+						"id": 80
+					}
+				]
+            }
+```
+
+Schema/DP's:
+```
+```
+
 ## Simple Dimmer
 
 **Treatlife Dimmable Smart Plug for Lamps**
