@@ -141,6 +141,24 @@
                 "functionBody": "return model.devices && model.devices[arrayIndices].type !== 'null';"
               }
             },
+            "version": {
+              "title": "Tuya protocol version",
+              "type": "string",
+              "placeholder": "e.g. 3.3",
+              "description": "Leave empty to auto-detect. Used when the device cannot be discovered (e.g. fixed IP across subnets). Supported: 3.1, 3.2, 3.3, 3.4, 3.5 (newer reported versions such as 3.6 are handled with the 3.5 stack automatically).",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices].type !== 'null';"
+              }
+            },
+            "forceVersion": {
+              "title": "Force Tuya protocol version",
+              "type": "string",
+              "placeholder": "e.g. 3.5",
+              "description": "Overrides the protocol version even when the device broadcasts a different one. Only set this if a device misbehaves with its auto-detected version.",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices].type !== 'null';"
+              }
+            },
             "manufacturer": {
               "type": "string",
               "description": "Anything you'd like to use to help identify this device.",

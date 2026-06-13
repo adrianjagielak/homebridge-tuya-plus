@@ -127,8 +127,12 @@ class TuyaLan {
 
                 this.log.info('Discovered %s (%s) identified as %s (%s)', devices[config.id].name, config.id, devices[config.id].type, config.version);
 
+                // The version broadcast by the device wins over a configured `version`,
+                // but `forceVersion` overrides everything (e.g. to pin a device that
+                // reports a newer protocol, like 3.6, to a specific stack).
                 const device = new TuyaAccessory({
                     ...devices[config.id], ...config,
+                    ...(devices[config.id].forceVersion ? {version: devices[config.id].forceVersion} : {}),
                     log: this.log,
                     UUID: UUID.generate(UUID_SEED + ':' + config.id),
                     connect: false
@@ -156,6 +160,7 @@ class TuyaLan {
 
                     const device = new TuyaAccessory({
                         ...devices[deviceId],
+                        ...(devices[deviceId].forceVersion ? {version: devices[deviceId].forceVersion} : {}),
                         log: this.log,
                         UUID: UUID.generate(UUID_SEED + ':' + deviceId),
                         connect: false

@@ -17,6 +17,7 @@
 A community-maintained Homebridge plugin for controlling Tuya devices locally over LAN. Control your supported Tuya accessories locally in HomeKit.
 
 * [Supported Device Types](#supported-device-types)
+* [Supported Tuya Protocol Versions](#supported-tuya-protocol-versions)
 * [Installation Instructions](#installation-instructions)
 * [Configuration](#configuration)
 * [Known Issues](#known-issues)
@@ -48,6 +49,24 @@ A community-maintained Homebridge plugin for controlling Tuya devices locally ov
 
 Note: Motion, and other sensor types don't behave well with responce requests, so they will not be added. 
 
+## Supported Tuya Protocol Versions
+
+The plugin speaks every published Tuya LAN protocol version:
+
+| Tuya LAN protocol | Framing | Encryption | Status |
+|---|---|---|---|
+| 3.1 | `0x55AA` | AES-128-ECB (base64, control only) | ✅ Supported |
+| 3.2 | `0x55AA` | AES-128-ECB | ✅ Supported |
+| 3.3 | `0x55AA` | AES-128-ECB | ✅ Supported |
+| 3.4 | `0x55AA` | AES-128-ECB, session key, HMAC-SHA256 | ✅ Supported |
+| 3.5 | `0x6699` | AES-128-GCM, session key | ✅ Supported |
+| 3.6 and newer | — | — | ✅ Forward-compatible (see below) |
+
+The protocol version is auto-detected from the device's discovery broadcast, so you normally don't need to configure anything.
+
+Protocol **3.5** is currently the newest Tuya LAN protocol in existence: it is the latest version implemented by Tuya's own open-source device SDK ([TuyaOpen](https://github.com/tuya/TuyaOpen)) and by the reference reverse-engineered implementations ([tinytuya](https://github.com/jasonacox/tinytuya/blob/master/PROTOCOL.md)). No device firmware speaking a "3.6" protocol has been observed in the wild so far.
+
+This plugin is nevertheless **3.6-ready**: if a device reports a newer protocol version (e.g. `3.6`) in its broadcast, the plugin automatically talks to it using the newest (3.5/GCM) protocol stack while tagging payloads with the device's reported version — the same forward-compatibility strategy used by tinytuya. Should such a device misbehave, you can pin it to a specific protocol with the `forceVersion` device option (e.g. `"forceVersion": "3.5"`), or use `version` to set a protocol for devices that can't be discovered (e.g. on another subnet).
 
 ## Installation Instructions
 
