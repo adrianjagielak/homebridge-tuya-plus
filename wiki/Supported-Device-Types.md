@@ -663,3 +663,20 @@ These are accessories that combine fan and lighting control in one device. Suppo
     "dpRotationDirection": 63
 }
 ```
+
+If the light, brightness and turning the fan **off** all work, but turning the fan **on** or changing its speed is silently ignored, your fan's firmware most likely rejects LAN packets that carry more than one data point at once (some `fsd` ceiling fans behave this way). Set `"singleDpWrites": true` to send the fan power and speed as separate packets — matching how the Tuya cloud issues these commands:
+
+```json5
+{
+    "type": "FanLight",
+    "name": "My Fan with Light",
+    "id": "032000123456789abcde",
+    "key": "0123456789abcdef",
+
+    "dpActive": 60,
+    "dpRotationSpeed": 62,
+
+    /* Send each data point in its own packet instead of combining them. */
+    "singleDpWrites": true
+}
+```
