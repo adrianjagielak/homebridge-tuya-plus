@@ -71,6 +71,10 @@
                   "enum": ["Convector"]
                 },
                 {
+                  "title": "WLED Dimmer",
+                  "enum": ["WledDimmer"]
+                },
+                {
                   "title": "Simple Dimmer",
                   "enum": ["SimpleDimmer"]
                 },
@@ -226,16 +230,24 @@
               "type": "integer",
               "placeholder": "1",
               "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices] && ['Outlet', 'TWLight', 'RGBTWLight', 'SimpleDimmer','RGBTWOutlet'].includes(model.devices[arrayIndices].type);"
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['Outlet', 'TWLight', 'RGBTWLight', 'WledDimmer', 'SimpleDimmer','RGBTWOutlet'].includes(model.devices[arrayIndices].type);"
               }
             },
             "dpBrightness": {
               "type": "integer",
               "placeholder": "2",
               "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices] && ['TWLight', 'RGBTWLight', 'SimpleDimmer','RGBTWOutlet', 'FanLight'].includes(model.devices[arrayIndices].type);"
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['TWLight', 'RGBTWLight', 'WledDimmer', 'SimpleDimmer','RGBTWOutlet', 'FanLight'].includes(model.devices[arrayIndices].type);"
               }
             },
+            "syncBrightnessToWled": {
+              "type": "string",
+              "title": "Sync brightness to WLED (IP[:port])",
+              "placeholder": "192.168.1.100",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['WledDimmer', 'SimpleDimmer'].includes(model.devices[arrayIndices].type);"
+              }
+            },            
             "dpColorTemperature": {
               "type": "integer",
               "placeholder": "3",
@@ -278,11 +290,18 @@
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['RGBTWLight','RGBTWOutlet'].includes(model.devices[arrayIndices].type);"
               }
             },
+            "minBrightness": {
+              "type": "integer",
+              "placeholder": "1",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['FanLight','WledDimmer', 'SimpleDimmer'].includes(model.devices[arrayIndices].type);"
+              }
+            },
             "scaleBrightness": {
               "type": "integer",
               "placeholder": "255",
               "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices] && ['TWLight','RGBTWLight','RGBTWOutlet', 'FanLight'].includes(model.devices[arrayIndices].type);"
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['RGBTWLight','RGBTWOutlet','FanLight','WledDimmer', 'SimpleDimmer'].includes(model.devices[arrayIndices].type);"
               }
             },
             "scaleWhiteColor": {
