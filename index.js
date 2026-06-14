@@ -217,14 +217,22 @@ class TuyaLan {
         let accessory = this.cachedAccessories.get(deviceConfig.UUID),
             isCached = true;
 
-        if (accessory && accessory.category !== Accessory.getCategory(Categories)) {
-            this.log.info("%s has a different type (%s vs %s)", accessory.displayName, accessory.category, Accessory.getCategory(Categories));
+        const expectedCategory = Accessory.getCategory(Categories);
+
+        // Only treat a cached accessory as a "different type" when we actually
+        // have a category to compare against. If getCategory() resolves to
+        // undefined (e.g. an unknown HAP category constant), HomeKit stores the
+        // accessory as Categories.OTHER, so an undefined expectation would never
+        // match and we would needlessly unregister & recreate the accessory on
+        // every restart — wiping its HomeKit identity (name, room, automations).
+        if (accessory && expectedCategory !== undefined && accessory.category !== expectedCategory) {
+            this.log.info("%s has a different type (%s vs %s)", accessory.displayName, accessory.category, expectedCategory);
             this.removeAccessory(accessory);
             accessory = null;
         }
 
         if (!accessory) {
-            accessory = new PlatformAccessory(deviceConfig.name, deviceConfig.UUID, Accessory.getCategory(Categories));
+            accessory = new PlatformAccessory(deviceConfig.name, deviceConfig.UUID, expectedCategory);
             accessory.getService(Service.AccessoryInformation)
                 .setCharacteristic(Characteristic.Manufacturer, deviceConfig.manufacturer || "Unknown")
                 .setCharacteristic(Characteristic.Model, deviceConfig.model || "Unknown")
