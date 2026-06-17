@@ -113,6 +113,10 @@
                 {
                   "title": "Air Purifier",
                   "enum": ["AirPurifier"]
+                },
+                {
+                  "title": "Irrigation System (Multi-Valve / Sprinkler)",
+                  "enum": ["IrrigationSystem"]
                 }
               ]
             },
@@ -630,6 +634,156 @@
               "placeholder": 1,
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['SimpleBlinds'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "valveCount": {
+              "type": "integer",
+              "title": "Number of Valves / Zones",
+              "placeholder": 4,
+              "description": "How many valves/zones the controller has. They are assumed to be on data-points 1, 2, 3, … For non-sequential data-points use the 'valves' list instead.",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "valves": {
+              "type": "array",
+              "title": "Valves / Zones (advanced)",
+              "orderable": false,
+              "description": "Optional. Define each zone explicitly to set custom names, data-points and default run times. Overrides 'Number of Valves'.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string", "title": "Zone name", "placeholder": "Lawn" },
+                  "dp": { "type": "integer", "title": "Data-point", "placeholder": 1 },
+                  "defaultDuration": { "type": "integer", "title": "Default run time (seconds, 0 = run indefinitely)", "placeholder": 600 }
+                }
+              },
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "defaultDuration": {
+              "type": "integer",
+              "title": "Default Run Time (seconds)",
+              "placeholder": 600,
+              "description": "Default per-zone run time used until you change it in the Home app. Set to 0 to make zones run indefinitely (until turned off) by default.",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "maxDuration": {
+              "type": "integer",
+              "title": "Maximum Run Time (seconds)",
+              "placeholder": 7200,
+              "description": "Upper bound advertised to HomeKit for the duration picker (HAP default is 3600 / 1h). Apple's Home app only offers presets up to 1h regardless; longer values can be set from the config or apps like Eve.",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "masterTurnsOnAllZones": {
+              "type": "boolean",
+              "title": "Master switch turns ON all zones",
+              "placeholder": true,
+              "description": "When you switch the whole irrigation system on (the main tile), open every zone in a single command. Disable to make the system switch a passive 'enabled' indicator.",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "masterTurnsOffAllZones": {
+              "type": "boolean",
+              "title": "Master switch turns OFF all zones",
+              "placeholder": true,
+              "description": "When you switch the whole irrigation system off, close every open zone in a single command.",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "commandDebounce": {
+              "type": "integer",
+              "title": "Command Debounce (ms)",
+              "placeholder": 500,
+              "description": "Zone changes that happen within this window are merged into one Tuya command — useful for this kind of laggy, battery-powered device. The Home app updates optimistically, so this delay isn't visible in the UI.",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "noBattery": {
+              "type": "boolean",
+              "title": "No battery service",
+              "description": "Disable the battery service (use if your controller is mains-powered or doesn't report 'battery_percentage').",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "dpBattery": {
+              "type": "integer",
+              "placeholder": 46,
+              "title": "Battery data-point",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type) && !model.devices[arrayIndices].noBattery;"
+              }
+            },
+            "lowBatteryThreshold": {
+              "type": "integer",
+              "placeholder": 20,
+              "title": "Low-battery threshold (%)",
+              "description": "At or below this level HomeKit shows a low-battery warning.",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type) && !model.devices[arrayIndices].noBattery;"
+              }
+            },
+            "dpCharging": {
+              "type": "integer",
+              "placeholder": 101,
+              "title": "Charging-status data-point",
+              "description": "Boolean data-point reporting whether the battery is charging (e.g. solar / USB-C units). HomeKit shows Charging / Not Charging; if your controller doesn't report this, it shows Not Chargeable.",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type) && !model.devices[arrayIndices].noBattery;"
+              }
+            },
+            "noRainSensor": {
+              "type": "boolean",
+              "title": "No rain sensor",
+              "description": "Disable the rain sensor (use if your controller doesn't report 'rain_sensor_state').",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "rainSensorType": {
+              "type": "string",
+              "title": "Rain sensor type",
+              "default": "contact",
+              "oneOf": [
+                { "title": "Contact sensor (Open / Closed)", "enum": ["contact"] },
+                { "title": "Leak sensor (Leak Detected / Dry — note: fires critical alerts)", "enum": ["leak"] }
+              ],
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type) && !model.devices[arrayIndices].noRainSensor;"
+              }
+            },
+            "rainInverted": {
+              "type": "boolean",
+              "title": "Invert rain sensor",
+              "description": "Flip the reported state if 'raining' and 'dry' appear reversed in HomeKit.",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type) && !model.devices[arrayIndices].noRainSensor;"
+              }
+            },
+            "dpRain": {
+              "type": "integer",
+              "placeholder": 49,
+              "title": "Rain sensor data-point",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type) && !model.devices[arrayIndices].noRainSensor;"
+              }
+            },
+            "rainOnValue": {
+              "type": "string",
+              "placeholder": "rain",
+              "title": "Rain sensor 'raining' value",
+              "description": "The enum value the device reports when it is raining (default 'rain').",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type) && !model.devices[arrayIndices].noRainSensor;"
               }
             }
           }

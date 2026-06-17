@@ -27,6 +27,7 @@ const CLASS_DEF = {
     simpleblinds: require('../lib/SimpleBlindsAccessory'),
     simpleheater: require('../lib/SimpleHeaterAccessory'),
     switch: require('../lib/SwitchAccessory'),
+    irrigationsystem: require('../lib/IrrigationSystemAccessory'),
     fan: require('../lib/SimpleFanAccessory'),
     fanlight: require('../lib/SimpleFanLightAccessory'),
     watervalve: require('../lib/ValveAccessory'),
