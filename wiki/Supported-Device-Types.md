@@ -428,9 +428,12 @@ Both the current and target door state are mirrored straight from this DP, so
 HomeKit stays in sync however the gate was operated (Home app, a physical
 remote, the Tuya app, ...).
 
-A HomeKit toggle simply fires the matching action — the controller reverses
-direction on its own, so no stop-first command is needed. There is no
-obstruction detection.
+Opening is direct: the controller reverses on its own, so an open command is
+fired straight away even while the gate is closing. Closing is asymmetric — the
+controller ignores a close command while the gate is actively moving. So unless
+the status DP already reads `11` (stopped, e.g. after a partial-open or an
+external stop, where close is accepted immediately), a close is sent as
+**stop → wait `stopBeforeCloseMs` → close**. There is no obstruction detection.
 
 ```json5
 {
@@ -450,13 +453,19 @@ obstruction detection.
     "dpClose": 102,
 
     /* Override the default datapoint identifier for the stop action
-       (only used by the partial-open feature) */
+       (used by the partial-open feature and the stop-before-close) */
     "dpStop": 103,
 
     /* Override the default datapoint identifier for the reported state.
        11 (stopped) and 12 (opening/open) are treated as OPEN; 13
        (closing/closed) is treated as CLOSED. */
     "dpState": 105,
+
+    /* Optional. The controller ignores a close while the gate is moving,
+       so unless the state DP already reads 11 (stopped) the plugin sends
+       stop, waits this many milliseconds, then sends close. Tune to about
+       how long the gate takes to halt after a stop. Default 1500. */
+    "stopBeforeCloseMs": 1500,
 
     /* Optional. If set, exposes an extra stateful switch that mirrors
        whether the gate is currently open in HomeKit's view. Tapping it

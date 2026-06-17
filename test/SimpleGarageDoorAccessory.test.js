@@ -49,7 +49,9 @@ function makeSimpleGarage(initialContext = {}) {
     instance.dpStop = '103';
     instance.dpState = '105';
     instance.partialOpenMs = 0;
+    instance.stopBeforeCloseMs = 1500;
     instance.partialStopTimer = null;
+    instance.pendingCloseTimer = null;
     instance.currentDoorState = CDS.CLOSED;
     instance.characteristicCurrentDoorState = {
         value: CDS.CLOSED,
@@ -77,7 +79,7 @@ function emitState(device, value) {
 }
 
 // ---------------------------------------------------------------------------
-// State DP -> door state mapping (the heart of the new behaviour)
+// State DP -> door state mapping
 // ---------------------------------------------------------------------------
 describe('SimpleGarageDoorAccessory._onDeviceChange', () => {
     test('State 12 (opening/open) drives Current and Target to OPEN', () => {
@@ -165,39 +167,37 @@ describe('SimpleGarageDoorAccessory._onDeviceChange', () => {
 });
 
 // ---------------------------------------------------------------------------
-// setTargetDoorState — fires the matching action, no stop-first dance
+// Open — always fired directly, even mid-motion
 // ---------------------------------------------------------------------------
-describe('SimpleGarageDoorAccessory.setTargetDoorState', () => {
-    test('OPEN fires the open action immediately (no stop first)', () => {
-        const { instance, device, accessory } = makeSimpleGarage();
+describe('SimpleGarageDoorAccessory.setTargetDoorState — open', () => {
+    test('OPEN fires the open action immediately, even while the gate is closing', () => {
+        const { instance, device } = makeSimpleGarage();
+        device.state['105'] = STATE_CLOSING_OR_CLOSED;
 
         instance.setTargetDoorState(TDS.OPEN);
 
         expect(device.update).toHaveBeenCalledTimes(1);
         expect(device.update).toHaveBeenCalledWith({ '101': true });
-        expect(accessory.context.cachedTargetDoorState).toBe(TDS.OPEN);
-        expect(instance.characteristicTargetDoorState.value).toBe(TDS.OPEN);
     });
 
-    test('CLOSE fires the close action immediately (no stop first)', () => {
-        const { instance, device, accessory } = makeSimpleGarage();
-        instance.currentDoorState = CDS.OPEN;
-
-        instance.setTargetDoorState(TDS.CLOSED);
-
-        expect(device.update).toHaveBeenCalledTimes(1);
-        expect(device.update).toHaveBeenCalledWith({ '102': true });
-        expect(accessory.context.cachedTargetDoorState).toBe(TDS.CLOSED);
-        expect(instance.characteristicTargetDoorState.value).toBe(TDS.CLOSED);
-    });
-
-    test('CurrentDoorState is not touched until the device reports it', () => {
+    test('OPEN never fires a stop first', () => {
         const { instance, device } = makeSimpleGarage();
+        device.state['105'] = STATE_OPENING_OR_OPEN;
+
+        instance.setTargetDoorState(TDS.OPEN);
+
+        expect(device.update).not.toHaveBeenCalledWith({ '103': true });
+        expect(device.update).toHaveBeenCalledWith({ '101': true });
+    });
+
+    test('Target + persistence update optimistically; Current waits for the DP', () => {
+        const { instance, device, accessory } = makeSimpleGarage();
         instance.currentDoorState = CDS.CLOSED;
         instance.characteristicCurrentDoorState.value = CDS.CLOSED;
 
         instance.setTargetDoorState(TDS.OPEN);
-        // Target updated, but Current waits for the status DP.
+        expect(accessory.context.cachedTargetDoorState).toBe(TDS.OPEN);
+        expect(instance.characteristicTargetDoorState.value).toBe(TDS.OPEN);
         expect(instance.characteristicCurrentDoorState.updateValue).not.toHaveBeenCalled();
         expect(instance.currentDoorState).toBe(CDS.CLOSED);
 
@@ -207,25 +207,165 @@ describe('SimpleGarageDoorAccessory.setTargetDoorState', () => {
         expect(instance.characteristicCurrentDoorState.value).toBe(CDS.OPEN);
     });
 
-    test('Custom DPs are respected', () => {
+    test('Custom open DP is respected', () => {
         const { instance, device } = makeSimpleGarage();
         instance.dpOpen = '1';
-        instance.dpClose = '2';
 
         instance.setTargetDoorState(TDS.OPEN);
+
         expect(device.update).toHaveBeenCalledWith({ '1': true });
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Close — direct only when already stopped (state 11), otherwise stop-first
+// ---------------------------------------------------------------------------
+describe('SimpleGarageDoorAccessory.setTargetDoorState — close (stop-before-close)', () => {
+    beforeEach(() => jest.useFakeTimers());
+    afterEach(() => jest.useRealTimers());
+
+    test('CLOSE fires immediately when the gate is already stopped (state 11)', () => {
+        const { instance, device, accessory } = makeSimpleGarage();
+        device.state['105'] = STATE_STOPPED;
 
         instance.setTargetDoorState(TDS.CLOSED);
-        expect(device.update).toHaveBeenCalledWith({ '2': true });
+
+        expect(device.update).toHaveBeenCalledTimes(1);
+        expect(device.update).toHaveBeenCalledWith({ '102': true });
+        expect(instance.pendingCloseTimer).toBeNull();
+        expect(accessory.context.cachedTargetDoorState).toBe(TDS.CLOSED);
+        expect(instance.characteristicTargetDoorState.value).toBe(TDS.CLOSED);
     });
 
-    test('Stop is never fired by a normal open/close', () => {
+    test('CLOSE while opening (state 12) fires stop, then close after stopBeforeCloseMs', () => {
         const { instance, device } = makeSimpleGarage();
+        instance.stopBeforeCloseMs = 1500;
+        device.state['105'] = STATE_OPENING_OR_OPEN;
 
-        instance.setTargetDoorState(TDS.OPEN);
         instance.setTargetDoorState(TDS.CLOSED);
 
-        expect(device.update).not.toHaveBeenCalledWith({ '103': true });
+        // Stop goes out immediately, close is deferred.
+        expect(device.update).toHaveBeenCalledTimes(1);
+        expect(device.update).toHaveBeenNthCalledWith(1, { '103': true });
+
+        jest.advanceTimersByTime(1500 - 1);
+        expect(device.update).toHaveBeenCalledTimes(1);
+
+        jest.advanceTimersByTime(1);
+        expect(device.update).toHaveBeenCalledTimes(2);
+        expect(device.update).toHaveBeenNthCalledWith(2, { '102': true });
+        expect(instance.pendingCloseTimer).toBeNull();
+    });
+
+    test('CLOSE while closing (state 13) also uses stop-before-close', () => {
+        const { instance, device } = makeSimpleGarage();
+        instance.stopBeforeCloseMs = 1500;
+        device.state['105'] = STATE_CLOSING_OR_CLOSED;
+
+        instance.setTargetDoorState(TDS.CLOSED);
+        expect(device.update).toHaveBeenNthCalledWith(1, { '103': true });
+
+        jest.advanceTimersByTime(1500);
+        expect(device.update).toHaveBeenNthCalledWith(2, { '102': true });
+    });
+
+    test('CLOSE with no reported state yet uses stop-before-close', () => {
+        const { instance, device } = makeSimpleGarage();
+        instance.stopBeforeCloseMs = 1500;
+        // device.state['105'] intentionally left undefined
+
+        instance.setTargetDoorState(TDS.CLOSED);
+        expect(device.update).toHaveBeenNthCalledWith(1, { '103': true });
+
+        jest.advanceTimersByTime(1500);
+        expect(device.update).toHaveBeenNthCalledWith(2, { '102': true });
+    });
+
+    test('A duplicate CLOSE during the wait does not restart or double-fire', () => {
+        const { instance, device } = makeSimpleGarage();
+        instance.stopBeforeCloseMs = 1500;
+        device.state['105'] = STATE_OPENING_OR_OPEN;
+
+        instance.setTargetDoorState(TDS.CLOSED);
+        expect(device.update).toHaveBeenCalledTimes(1); // stop
+
+        jest.advanceTimersByTime(1000);
+        instance.setTargetDoorState(TDS.CLOSED); // retransmit / second tap
+        expect(device.update).toHaveBeenCalledTimes(1); // no extra stop, timer not pushed out
+
+        jest.advanceTimersByTime(500);
+        expect(device.update).toHaveBeenCalledTimes(2);
+        expect(device.update).toHaveBeenNthCalledWith(2, { '102': true });
+    });
+
+    test('OPEN during the wait cancels the pending close and opens instead', () => {
+        const { instance, device } = makeSimpleGarage();
+        instance.stopBeforeCloseMs = 1500;
+        device.state['105'] = STATE_OPENING_OR_OPEN;
+
+        instance.setTargetDoorState(TDS.CLOSED);
+        expect(device.update).toHaveBeenNthCalledWith(1, { '103': true }); // stop
+
+        jest.advanceTimersByTime(500);
+        instance.setTargetDoorState(TDS.OPEN);
+        expect(instance.pendingCloseTimer).toBeNull();
+        expect(device.update).toHaveBeenNthCalledWith(2, { '101': true }); // open
+
+        // The trailing close must never fire.
+        jest.advanceTimersByTime(5000);
+        expect(device.update).toHaveBeenCalledTimes(2);
+    });
+
+    test('Status reports are ignored during the stop-before-close window', () => {
+        const { instance, device, accessory } = makeSimpleGarage();
+        instance.stopBeforeCloseMs = 1500;
+        device.state['105'] = STATE_OPENING_OR_OPEN;
+        instance.currentDoorState = CDS.OPEN;
+        instance.characteristicCurrentDoorState.value = CDS.OPEN;
+
+        instance.setTargetDoorState(TDS.CLOSED);
+        expect(accessory.context.cachedTargetDoorState).toBe(TDS.CLOSED);
+
+        // The stop makes the controller momentarily report 11 (=OPEN). That
+        // must be ignored, or it would bounce Target back to OPEN mid-close.
+        emitState(device, STATE_STOPPED);
+        expect(accessory.context.cachedTargetDoorState).toBe(TDS.CLOSED);
+        expect(instance.currentDoorState).toBe(CDS.OPEN);
+
+        // Close fires, then the controller reports 13 and we resume mirroring.
+        jest.advanceTimersByTime(1500);
+        expect(device.update).toHaveBeenNthCalledWith(2, { '102': true });
+        emitState(device, STATE_CLOSING_OR_CLOSED);
+        expect(instance.currentDoorState).toBe(CDS.CLOSED);
+        expect(accessory.context.cachedTargetDoorState).toBe(TDS.CLOSED);
+    });
+
+    test('stopBeforeCloseMs is configurable', () => {
+        const { instance, device } = makeSimpleGarage();
+        instance.stopBeforeCloseMs = 300;
+        device.state['105'] = STATE_OPENING_OR_OPEN;
+
+        instance.setTargetDoorState(TDS.CLOSED);
+        expect(device.update).toHaveBeenNthCalledWith(1, { '103': true });
+
+        jest.advanceTimersByTime(299);
+        expect(device.update).toHaveBeenCalledTimes(1);
+        jest.advanceTimersByTime(1);
+        expect(device.update).toHaveBeenNthCalledWith(2, { '102': true });
+    });
+
+    test('Custom stop/close DPs are respected in the stop-before-close path', () => {
+        const { instance, device } = makeSimpleGarage();
+        instance.dpClose = '2';
+        instance.dpStop = '4';
+        instance.stopBeforeCloseMs = 1000;
+        device.state['105'] = STATE_OPENING_OR_OPEN;
+
+        instance.setTargetDoorState(TDS.CLOSED);
+        expect(device.update).toHaveBeenNthCalledWith(1, { '4': true });
+
+        jest.advanceTimersByTime(1000);
+        expect(device.update).toHaveBeenNthCalledWith(2, { '2': true });
     });
 });
 
@@ -248,7 +388,9 @@ describe('SimpleGarageDoorAccessory — disconnected', () => {
 // ---------------------------------------------------------------------------
 describe('SimpleGarageDoorAccessory persistence', () => {
     test('Stores the latest target on the accessory context', () => {
-        const { instance, accessory } = makeSimpleGarage();
+        const { instance, device, accessory } = makeSimpleGarage();
+        // Already stopped, so the close fires immediately (no dangling timer).
+        device.state['105'] = STATE_STOPPED;
 
         instance.setTargetDoorState(TDS.OPEN);
         expect(accessory.context.cachedTargetDoorState).toBe(TDS.OPEN);
@@ -310,22 +452,28 @@ describe('SimpleGarageDoorAccessory._handlePartialOpen', () => {
         expect(device.update).toHaveBeenNthCalledWith(2, { '103': true });
     });
 
-    test('A direct open/close cancels the armed auto-stop', () => {
+    test('A direct close cancels the partial auto-stop and runs stop-before-close', () => {
         const { instance, device } = makeSimpleGarage();
         instance.partialOpenMs = 2000;
+        instance.stopBeforeCloseMs = 1500;
+        device.state['105'] = STATE_OPENING_OR_OPEN; // gate is moving during the partial
 
         instance._handlePartialOpen();
         expect(instance.partialStopTimer).not.toBeNull();
+        expect(device.update).toHaveBeenNthCalledWith(1, { '101': true }); // open
 
-        // User takes manual control before the auto-stop fires.
+        // User closes before the partial auto-stop fires.
         jest.advanceTimersByTime(500);
         instance.setTargetDoorState(TDS.CLOSED);
-        expect(instance.partialStopTimer).toBeNull();
-        expect(device.update).toHaveBeenLastCalledWith({ '102': true });
+        expect(instance.partialStopTimer).toBeNull(); // partial auto-stop cancelled
+        expect(device.update).toHaveBeenNthCalledWith(2, { '103': true }); // stop-before-close stop
 
-        // The stop must never fire now.
+        jest.advanceTimersByTime(1500);
+        expect(device.update).toHaveBeenNthCalledWith(3, { '102': true }); // close
+
+        // The cancelled partial stop never fires a stray write.
         jest.advanceTimersByTime(5000);
-        expect(device.update).not.toHaveBeenCalledWith({ '103': true });
+        expect(device.update).toHaveBeenCalledTimes(3);
     });
 
     test('Does nothing when partialOpenMs is not configured', () => {
@@ -375,8 +523,9 @@ describe('SimpleGarageDoorAccessory — force switches', () => {
         expect(accessory.context.cachedTargetDoorState).toBe(TDS.OPEN);
     });
 
-    test('Force Close fires the close action', () => {
+    test('Force Close fires the close action (immediately when already stopped)', () => {
         const { instance, device, accessory } = makeSimpleGarage();
+        device.state['105'] = STATE_STOPPED;
 
         instance.setTargetDoorState(TDS.CLOSED);
 
