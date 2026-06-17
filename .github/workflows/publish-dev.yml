@@ -1,0 +1,91 @@
+name: Publish dev to npm
+
+# Publishes every commit on `main` to npm under the `dev` dist-tag.
+#
+# Security model (why a malicious PR cannot steal publishing rights):
+#   * No npm token is stored anywhere. Publishing uses npm Trusted
+#     Publishing (OIDC): GitHub mints a short-lived, cryptographically
+#     signed token that npm only accepts when its claims match THIS repo +
+#     THIS workflow file. There is no durable credential to exfiltrate.
+#   * This workflow never runs on `pull_request`, only on pushes to `main`
+#     (post-merge) and manual dispatch — so fork PRs get nothing.
+#   * The privileged `publish` job is minimal and isolated: it does not
+#     run `npm ci`, a build, or tests, and uses `--ignore-scripts`, so no
+#     repo/dependency code executes while the OIDC permission is present.
+#     Tests run in a separate, unprivileged job that gates publishing.
+#
+# One-time setup required for this to succeed (see PR/commit notes):
+#   1. npmjs.com -> package Settings -> Trusted Publisher:
+#        Publisher: GitHub Actions
+#        Organization/user: adrianjagielak
+#        Repository:        homebridge-tuya-plus
+#        Workflow filename: publish-dev.yml
+#        Environment:       npm-dev
+#   2. GitHub repo Settings -> Environments -> create `npm-dev`,
+#      restrict deployment branches to `main` (optional: required reviewer).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Least privilege by default; only the publish job opts into id-token.
+permissions:
+  contents: read
+
+# Don't cancel an in-flight publish; let each commit publish its version.
+concurrency:
+  group: publish-dev
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run test
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    # Bind this environment in repo Settings to the `main` branch so that
+    # only main can ever reach the publish step.
+    environment: npm-dev
+    permissions:
+      contents: read # checkout
+      id-token: write # OIDC -> npm Trusted Publishing (no stored token)
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      # Trusted Publishing (OIDC) requires npm >= 11.5.1.
+      - name: Ensure OIDC-capable npm
+        run: npm install -g npm@latest
+
+      - name: Compute dev version
+        id: ver
+        run: |
+          NEXT="$(node -e "const v=require('./package.json').version.split('.'); v[2]=Number(v[2])+1; console.log(v.join('.'))")"
+          VERSION="${NEXT}-dev.${GITHUB_RUN_NUMBER}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Will publish $VERSION"
+
+      # Writes package.json on the runner only; nothing is committed.
+      - name: Set version
+        run: npm version "${{ steps.ver.outputs.version }}" --no-git-tag-version --allow-same-version --ignore-scripts
+
+      # No NODE_AUTH_TOKEN: npm exchanges the OIDC id-token for a
+      # short-lived, package-scoped credential at publish time.
+      # --ignore-scripts ensures no lifecycle script runs with that credential.
+      # --provenance attaches a signed build attestation (needs a public repo).
+      - name: Publish (dev tag)
+        run: npm publish --tag dev --provenance --ignore-scripts

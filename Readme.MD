@@ -81,6 +81,19 @@ Search for "Tuya" in [homebridge-config-ui-x](https://github.com/oznu/homebridge
 sudo npm install -g homebridge-tuya-plus
 ```
 
+#### Bleeding-edge (`dev`) builds:
+
+Every commit to `main` is automatically published to npm under the `dev` tag — a
+separate, unstable channel. The stable release always stays on `latest`, so this
+won't affect normal installs. To try the latest in-development build:
+
+```
+sudo npm install -g homebridge-tuya-plus@dev
+```
+
+These are versioned like `3.13.1-dev.<n>` and may be unstable; use the default
+install above for production.
+
 ## Configuration
 > UI
 
