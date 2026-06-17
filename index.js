@@ -22,6 +22,7 @@ const SimpleFanAccessory = require('./lib/SimpleFanAccessory');
 const SimpleFanLightAccessory = require('./lib/SimpleFanLightAccessory');
 const SwitchAccessory = require('./lib/SwitchAccessory');
 const ValveAccessory = require('./lib/ValveAccessory');
+const IrrigationSystemAccessory = require('./lib/IrrigationSystemAccessory');
 const OilDiffuserAccessory = require('./lib/OilDiffuserAccessory');
 const DoorbellAccessory = require('./lib/DoorbellAccessory');
 const VerticalBlindsWithTilt = require('./lib/VerticalBlindsWithTilt');
@@ -58,6 +59,7 @@ const CLASS_DEF = {
     fan: SimpleFanAccessory,
     fanlight: SimpleFanLightAccessory,
     watervalve: ValveAccessory,
+    irrigationsystem: IrrigationSystemAccessory,
     oildiffuser: OilDiffuserAccessory,
     doorbell: DoorbellAccessory,
     verticalblindswithtilt: VerticalBlindsWithTilt,

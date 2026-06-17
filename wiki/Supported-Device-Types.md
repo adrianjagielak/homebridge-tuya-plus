@@ -711,3 +711,91 @@ If the light, brightness and turning the fan **off** all work, but turning the f
     "singleDpWrites": true
 }
 ```
+
+### Irrigation Systems / Sprinklers
+
+Multi-valve Tuya irrigation/sprinkler controllers (the battery-powered Wi-Fi "faucet timers" that expose several `switch_*` valves, a `battery_percentage` and a `rain_sensor_state`) are exposed as a single, fully-fledged HomeKit **Irrigation System** accessory:
+
+* one **Irrigation System** tile that contains every zone,
+* one **Valve** per zone (`ValveType = Irrigation`) — each with its own on/off, its own **Duration** picker and a live countdown,
+* an optional **Battery** service (level, low-battery warning, and — for solar/USB-C rechargeable units that report it — live charging status),
+* an optional **rain sensor** (a Contact sensor by default).
+
+Because these devices are slow to respond, all zone changes that happen close together — turning the whole system on/off, or running a scene that toggles several zones — are merged into a **single** Tuya command instead of a burst of them.
+
+#### Minimal Configuration
+
+The defaults match the common 4-zone layout (valves A–D on data-points `1`–`4`, battery on `46`, rain on `49`):
+
+```json5
+{
+    "name": "Garden Irrigation",
+    "type": "IrrigationSystem",
+    "manufacturer": "Generic",
+    "model": "4-Zone Water Timer",
+    "id": "032000123456789abcde",
+    "key": "0123456789abcdef"
+}
+```
+
+#### Per-zone timers and "indefinite" mode
+
+Each zone has its own **Duration**. When a zone is switched on it runs for that duration and the plugin closes it automatically (HomeKit's countdown is display-only — the plugin always enforces the shut-off, even after a Homebridge restart).
+
+* Set a zone's duration to **`0`** to make it run **indefinitely** (until it is switched off again) — handy for long, manual watering tasks.
+* Apple's Home app only offers duration presets up to **1 hour**. For longer runs (up to `maxDuration`) or to preset "indefinite" zones, set `defaultDuration` / the per-valve `defaultDuration` in the config, or use the Eve app.
+
+#### Master ("toggle all") switch
+
+Switching the whole Irrigation System tile **off** closes every open zone, and switching it **on** opens every zone — each as one combined command (mirroring the physical "all" button many of these controllers have). Either direction can be disabled with `masterTurnsOffAllZones` / `masterTurnsOnAllZones`.
+
+#### Rain sensor: Contact vs Leak
+
+By default the rain sensor is a **Contact sensor** (`raining → Open`). You can switch it to a **Leak sensor** (`raining → Leak Detected`) with `"rainSensorType": "leak"` — leak sensors read more naturally for rain and make "when it starts raining" automations obvious, **but HomeKit treats them as safety accessories and raises critical alerts that bypass Do-Not-Disturb on every rainfall**, which many people find too noisy. Use `rainInverted` if the wet/dry states appear reversed.
+
+#### Full Configuration
+
+```json5
+{
+    "name": "Garden Irrigation",
+    "type": "IrrigationSystem",
+    "manufacturer": "Generic",
+    "model": "4-Zone Water Timer",
+    "id": "032000123456789abcde",
+    "key": "0123456789abcdef",
+
+    /* --- Zones --- */
+    /* Simple: number of valves on sequential data-points 1, 2, 3, … */
+    "valveCount": 4,
+    /* …or, for custom names / non-sequential data-points, define them explicitly
+       (this overrides valveCount). defaultDuration is in seconds; 0 = indefinite. */
+    "valves": [
+        { "name": "Front Lawn", "dp": 1, "defaultDuration": 900 },
+        { "name": "Back Lawn",  "dp": 2, "defaultDuration": 900 },
+        { "name": "Flower Beds","dp": 3, "defaultDuration": 600 },
+        { "name": "Drip Line",  "dp": 4, "defaultDuration": 0 }
+    ],
+
+    /* --- Timers --- */
+    "defaultDuration": 600,   /* default per-zone run time, seconds (0 = indefinite) */
+    "maxDuration": 7200,      /* upper bound advertised to HomeKit, seconds */
+
+    /* --- Master switch behaviour --- */
+    "masterTurnsOnAllZones": true,
+    "masterTurnsOffAllZones": true,
+    "commandDebounce": 500,   /* ms window for merging zone changes into one command */
+
+    /* --- Battery (omit / set noBattery:true if mains-powered) --- */
+    "dpBattery": 46,
+    "lowBatteryThreshold": 20,
+    "dpCharging": 101,   /* boolean charging-status DP (solar / USB-C); omit if not reported */
+    /* "noBattery": true, */
+
+    /* --- Rain sensor (omit / set noRainSensor:true if not present) --- */
+    "dpRain": 49,
+    "rainSensorType": "contact", /* or "leak" */
+    "rainOnValue": "rain",       /* enum value reported while raining */
+    "rainInverted": false
+    /* "noRainSensor": true, */
+}
+```
