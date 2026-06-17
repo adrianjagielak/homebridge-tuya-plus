@@ -18,7 +18,7 @@ If you are looking for verified configurations for your specific device, please 
 |WLED Dimmer|`WledDimmer` (or legacy `SimpleDimmer`)<sup>[8](#simple-dimmers)</sup>|Dimmer switches with power control, with optional WLED sync <small>([instructions](#simple-dimmers))</small>|
 |Simple Heater|`SimpleHeater`<sup>[9](#simple-heaters)</sup>|Heating solutions with only temperature control <small>([instructions](#simple-heaters))</small>|
 |Garage Door|`GarageDoor`<sup>[10](#garage-doors)</sup>|Smart garage doors or garage door openers <small>([instructions](#garage-doors))</small>|
-|Simple Garage Door|`SimpleGarageDoor`<sup>[10](#simple-garage-doors)</sup>|Garage doors and sliding gate openers that expose only three momentary action DPs: open, stop, close <small>([instructions](#simple-garage-doors))</small>|
+|Simple Garage Door|`SimpleGarageDoor`<sup>[10](#simple-garage-doors)</sup>|Sliding gate openers and garage door controllers with open/stop/close action DPs and a simple three-value status DP <small>([instructions](#simple-garage-doors))</small>|
 |Simple Blinds|`SimpleBlinds`<sup>[11](#simple-blinds)</sup>|Smart blinds and smart switches that control blinds <small>([instructions](#simple-blinds))</small>|
 |Simple Blinds2|`SimpleBlinds2`<sup>[11](#simple-blinds)</sup>|Smart blinds and smart switches that control blinds(Use if simple Blinds (1) doesn't work for you. <small>([instructions](#simple-blinds))</small>|
 |Vertical Blinds with Tilt|`VerticalBlindsWithTilt`<sup>[11](#vertical-blinds-with-tilt)</sup>|Smart vertical blinds with open/close and panel rotation <small>([instructions](#vertical-blinds-with-tilt))</small>|
@@ -419,7 +419,18 @@ While still in early testing, you can use this to open and close the garage door
 ```
 
 ### Simple Garage Doors
-For very basic garage door openers and sliding gate controllers that expose only three momentary action DPs — one to open, one to stop, one to close — with no position or status feedback. The plugin tracks the target state locally and persists it across restarts, so HomeKit always reflects whatever was last requested. Triggering a change sends the stop command first (so reversing direction mid-motion works; it is a no-op when the gate is idle) and then the open or close command. There is no obstruction detection.
+For sliding gate openers and garage door controllers that expose momentary
+open/stop/close action DPs plus a single status DP that reports the gate's
+movement. The controller only distinguishes three states — `11` (stopped),
+`12` (opening or open) and `13` (closing or closed) — so the plugin collapses
+them for HomeKit: `11`/`12` are treated as **OPEN** and `13` as **CLOSED**.
+Both the current and target door state are mirrored straight from this DP, so
+HomeKit stays in sync however the gate was operated (Home app, a physical
+remote, the Tuya app, ...).
+
+A HomeKit toggle simply fires the matching action — the controller reverses
+direction on its own, so no stop-first command is needed. There is no
+obstruction detection.
 
 ```json5
 {
@@ -433,28 +444,33 @@ For very basic garage door openers and sliding gate controllers that expose only
     /* Additional parameters to override defaults only if needed */
 
     /* Override the default datapoint identifier for the open action */
-    "dpOpen": 1,
-
-    /* Override the default datapoint identifier for the stop action */
-    "dpStop": 2,
+    "dpOpen": 101,
 
     /* Override the default datapoint identifier for the close action */
-    "dpClose": 3,
+    "dpClose": 102,
+
+    /* Override the default datapoint identifier for the stop action
+       (only used by the partial-open feature) */
+    "dpStop": 103,
+
+    /* Override the default datapoint identifier for the reported state.
+       11 (stopped) and 12 (opening/open) are treated as OPEN; 13
+       (closing/closed) is treated as CLOSED. */
+    "dpState": 105,
 
     /* Optional. If set, exposes an extra stateful switch that mirrors
        whether the gate is currently open in HomeKit's view. Tapping it
        ON triggers a partial-open: the gate opens and then stops itself
-       this many milliseconds after the device acknowledges the open,
-       leaving the gate partially open. Tapping it OFF triggers a
-       standard full close. Useful for letting someone pass through
-       briefly. Leave unset to skip the switch. */
+       this many milliseconds later, leaving the gate partially open.
+       Tapping it OFF triggers a standard full close. Useful for letting
+       someone pass through briefly. Leave unset to skip the switch. */
     "partialOpenMs": 2000,
 
     /* Optional. Exposes extra Force Open and Force Close momentary
-       switches alongside the main GarageDoorOpener. They drive the gate
-       through the same queue as the main toggle, but being plain
-       switches they can be used in HomeKit automations (which won't
-       accept GarageDoorOpener targets directly). Default false. */
+       switches alongside the main GarageDoorOpener. They fire the same
+       open/close actions as the main toggle, but being plain switches
+       they can be used in HomeKit automations (which won't accept
+       GarageDoorOpener targets directly). Default false. */
     "forceSwitches": true
 }
 ```

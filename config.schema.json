@@ -536,21 +536,32 @@
             },
             "dpOpen": {
               "type": "integer",
-              "placeholder": "1",
-              "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices] && ['SimpleGarageDoor'].includes(model.devices[arrayIndices].type);"
-              }
-            },
-            "dpStop": {
-              "type": "integer",
-              "placeholder": "2",
+              "placeholder": "101",
+              "description": "Datapoint identifier for the open action.",
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['SimpleGarageDoor'].includes(model.devices[arrayIndices].type);"
               }
             },
             "dpClose": {
               "type": "integer",
-              "placeholder": "3",
+              "placeholder": "102",
+              "description": "Datapoint identifier for the close action.",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['SimpleGarageDoor'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "dpStop": {
+              "type": "integer",
+              "placeholder": "103",
+              "description": "Datapoint identifier for the stop action (used only for the partial-open feature).",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['SimpleGarageDoor'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "dpState": {
+              "type": "integer",
+              "placeholder": "105",
+              "description": "Datapoint identifier for the reported state. Values 11 (stopped) and 12 (opening/open) are treated as OPEN; 13 (closing/closed) is treated as CLOSED.",
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['SimpleGarageDoor'].includes(model.devices[arrayIndices].type);"
               }
@@ -558,14 +569,14 @@
             "partialOpenMs": {
               "type": "integer",
               "placeholder": "2000",
-              "description": "Optional. If set, exposes an extra stateful switch that mirrors whether the gate is currently open. Tapping it ON triggers a partial-open (the gate opens and then stops itself this many milliseconds after the device acknowledges the open command, leaving the gate partially open). Tapping it OFF triggers a standard full close. Leave empty to skip the switch.",
+              "description": "Optional. If set, exposes an extra stateful switch that mirrors whether the gate is currently open. Tapping it ON triggers a partial-open (the gate opens and then stops itself this many milliseconds later, leaving the gate partially open). Tapping it OFF triggers a standard full close. Leave empty to skip the switch.",
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['SimpleGarageDoor'].includes(model.devices[arrayIndices].type);"
               }
             },
             "forceSwitches": {
               "type": "boolean",
-              "description": "Optional. Exposes extra Force Open and Force Close momentary switches alongside the main GarageDoorOpener. They drive the gate through the same queue as the main toggle, but as plain switches they can be used in HomeKit automations (which won't accept GarageDoorOpener targets directly).",
+              "description": "Optional. Exposes extra Force Open and Force Close momentary switches alongside the main GarageDoorOpener. They fire the same open/close actions as the main toggle, but as plain switches they can be used in HomeKit automations (which won't accept GarageDoorOpener targets directly).",
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['SimpleGarageDoor'].includes(model.devices[arrayIndices].type);"
               }
