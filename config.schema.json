@@ -579,6 +579,14 @@
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['SimpleGarageDoor'].includes(model.devices[arrayIndices].type);"
               }
             },
+            "stopBeforeCloseMs": {
+              "type": "integer",
+              "placeholder": "1500",
+              "description": "Optional. The controller ignores a close command while the gate is actively moving, so unless the state DP already reads 11 (stopped) the plugin sends stop, waits this many milliseconds, then sends close. Tune to roughly how long the gate takes to halt after a stop. Default 1500.",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['SimpleGarageDoor'].includes(model.devices[arrayIndices].type);"
+              }
+            },
             "partialOpenMs": {
               "type": "integer",
               "placeholder": "2000",
