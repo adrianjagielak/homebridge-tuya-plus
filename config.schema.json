@@ -459,6 +459,15 @@
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['Fan', 'FanLight'].includes(model.devices[arrayIndices].type);"
               }
             },
+            "singleDpWrites": {
+              "title": "Send fan commands one DP at a time",
+              "description": "Enable if turning the fan on or changing its speed is silently ignored. Some fan firmwares reject LAN packets that carry more than one data point, so the fan on/off and speed are sent as separate packets instead of combined.",
+              "type": "boolean",
+              "placeholder": false,
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['FanLight'].includes(model.devices[arrayIndices].type);"
+              }
+            },
             "dpChildLock": {
               "type": "integer",
               "placeholder": "6",
