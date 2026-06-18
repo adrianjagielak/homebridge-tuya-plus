@@ -1,6 +1,16 @@
 name: Publish dev to npm
 
-# Publishes every commit on `main` to npm under the `dev` dist-tag.
+# Publishes commits on `main` to npm under the `dev` dist-tag.
+#
+# Versioning:
+#   * Dev builds target the NEXT minor release, since releases here are
+#     usually a minor bump. With package.json at e.g. 3.13.0, dev builds
+#     are published as 3.14.0-dev.<run-number> (minor +1, patch reset to 0,
+#     prerelease tag = the GitHub Actions run number). In semver these sort
+#     below the eventual 3.14.0 release, so `latest` always wins once cut.
+#   * Release commits are skipped: if a push changes package.json's version
+#     (i.e. you bumped it to cut a real release and publish to npm
+#     manually), no dev build is published for that push.
 #
 # Security model (why a malicious PR cannot steal publishing rights):
 #   * No npm token is stored anywhere. Publishing uses npm Trusted
@@ -12,7 +22,8 @@ name: Publish dev to npm
 #   * The privileged `publish` job is minimal and isolated: it does not
 #     run `npm ci`, a build, or tests, and uses `--ignore-scripts`, so no
 #     repo/dependency code executes while the OIDC permission is present.
-#     Tests run in a separate, unprivileged job that gates publishing.
+#     Tests run in a separate, unprivileged job that gates publishing, and
+#     the version is computed in an unprivileged `prepare` job.
 #
 # One-time setup required for this to succeed (see PR/commit notes):
 #   1. npmjs.com -> package Settings -> Trusted Publisher:
@@ -50,8 +61,60 @@ jobs:
       - run: npm run lint
       - run: npm run test
 
+  # Unprivileged: decides whether this push should publish a dev build, and
+  # computes the dev version. Kept out of the `publish` job so no extra work
+  # runs while the OIDC publishing permission is present.
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      should_publish: ${{ steps.check.outputs.should_publish }}
+      version: ${{ steps.ver.outputs.version }}
+    steps:
+      # Full history so we can read package.json from before this push.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Skip dev builds for release commits: if package.json's version
+      # changed anywhere in this push (before -> after), treat it as a manual
+      # release and publish nothing. If we can't determine the previous
+      # version (first push, manual dispatch, missing file), default to
+      # publishing — a dev build is the safe fallback.
+      - name: Decide whether to publish a dev build
+        id: check
+        run: |
+          CURR="$(node -p "require('./package.json').version")"
+          BEFORE="${{ github.event.before }}"
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            BEFORE="$(git rev-parse --verify --quiet HEAD~1 || true)"
+          fi
+          PREV=""
+          if [ -n "$BEFORE" ] && git cat-file -e "$BEFORE:package.json" 2>/dev/null; then
+            git show "$BEFORE:package.json" > "$RUNNER_TEMP/prev-package.json"
+            PREV="$(node -p "require('$RUNNER_TEMP/prev-package.json').version")"
+          fi
+          echo "Previous version: ${PREV:-<unknown>}"
+          echo "Current version:  $CURR"
+          if [ -n "$PREV" ] && [ "$PREV" != "$CURR" ]; then
+            echo "::notice::package.json version changed ($PREV -> $CURR); skipping dev publish (treated as a manual release commit)."
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Dev builds target the next MINOR release (minor +1, patch -> 0).
+      - name: Compute dev version
+        id: ver
+        run: |
+          NEXT="$(node -e "const v=require('./package.json').version.split('.'); v[1]=Number(v[1])+1; v[2]=0; console.log(v.join('.'))")"
+          VERSION="${NEXT}-dev.${GITHUB_RUN_NUMBER}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Will publish $VERSION"
+
   publish:
-    needs: test
+    needs: [test, prepare]
+    # Skip release commits (version bumped in this push).
+    if: needs.prepare.outputs.should_publish == 'true'
     runs-on: ubuntu-latest
     # Bind this environment in repo Settings to the `main` branch so that
     # only main can ever reach the publish step.
@@ -71,17 +134,9 @@ jobs:
       - name: Ensure OIDC-capable npm
         run: npm install -g npm@latest
 
-      - name: Compute dev version
-        id: ver
-        run: |
-          NEXT="$(node -e "const v=require('./package.json').version.split('.'); v[2]=Number(v[2])+1; console.log(v.join('.'))")"
-          VERSION="${NEXT}-dev.${GITHUB_RUN_NUMBER}"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Will publish $VERSION"
-
       # Writes package.json on the runner only; nothing is committed.
       - name: Set version
-        run: npm version "${{ steps.ver.outputs.version }}" --no-git-tag-version --allow-same-version --ignore-scripts
+        run: npm version "${{ needs.prepare.outputs.version }}" --no-git-tag-version --allow-same-version --ignore-scripts
 
       # No NODE_AUTH_TOKEN: npm exchanges the OIDC id-token for a
       # short-lived, package-scoped credential at publish time.
