@@ -10,6 +10,7 @@
 // mix of legacy paths.
 
 const crypto = require('crypto');
+const EventEmitter = require('events');
 const TuyaAccessory = require('../lib/TuyaAccessory');
 const TuyaDiscovery = require('../lib/TuyaDiscovery');
 
@@ -524,5 +525,102 @@ describe('discovery of 3.5+/3.6 devices', () => {
         expect(found[0].id).toBe('bf9999999999999999ff');
         expect(found[0].ip).toBe('192.168.1.99');
         expect(found[0].version).toBe('3.6');
+    });
+});
+
+// Many Tuya devices (e.g. LED ceiling lights) recycle their long-lived LAN
+// sockets every few minutes, closing the connection with a TCP FIN ('end').
+// The handler must tear that connection down and reconnect promptly instead of
+// leaving a half-dead socket whose stale heartbeat timer later fires a
+// misleading ERR_PING_TIMED_OUT - which used to be the only thing that
+// triggered a reconnect.
+describe('graceful disconnect handling', () => {
+    const net = require('net');
+    let realNetSocket;
+    let createdSockets;
+
+    const makeFakeSocket = () => {
+        const s = new EventEmitter();
+        s.destroyed = false;
+        s.setKeepAlive = () => {};
+        s.setNoDelay = () => {};
+        s.connect = jest.fn();
+        s.write = jest.fn(() => true);
+        s.destroy = jest.fn(function destroy() { this.destroyed = true; });
+        return s;
+    };
+
+    beforeEach(() => {
+        jest.useFakeTimers();
+        createdSockets = [];
+        realNetSocket = net.Socket;
+        // TuyaAccessory calls net.Socket() dynamically, so swapping the property
+        // is enough to hand it a controllable fake (no real network I/O).
+        net.Socket = function FakeSocket() {
+            const s = makeFakeSocket();
+            createdSockets.push(s);
+            return s;
+        };
+    });
+
+    afterEach(() => {
+        net.Socket = realNetSocket;
+        jest.clearAllTimers();
+        jest.useRealTimers();
+    });
+
+    // Bring a device up to a steady, connected state on a fake socket.
+    const establish = device => {
+        device._connect();
+        const socket = device._socket;
+        // An established connection has already cleared its connect watchdog.
+        clearTimeout(socket._connTimeout);
+        socket._connTimeout = null;
+        device.connected = true;
+        return socket;
+    };
+
+    test("a device-initiated 'end' clears the heartbeat, tears down, and schedules a reconnect without a spurious ping timeout", () => {
+        const device = makeDevice('3.5');
+        const socket = establish(device);
+
+        // A heartbeat retry timer is in flight. With the old handler it survived
+        // the disconnect and later emitted a misleading ERR_PING_TIMED_OUT.
+        const pingErrors = [];
+        socket.on('error', err => {
+            if (err && err.message === 'ERR_PING_TIMED_OUT') pingErrors.push(err);
+        });
+        socket._pinger = setTimeout(
+            () => device._socket.emit('error', new Error('ERR_PING_TIMED_OUT')),
+            50
+        );
+
+        // The device closes the LAN connection on its own (TCP FIN -> 'end').
+        socket.emit('end');
+
+        expect(device.connected).toBe(false);
+        expect(socket._pinger).toBeNull();             // stale timer cleared
+        expect(socket.destroy).toHaveBeenCalledTimes(1); // socket torn down
+        expect(socket._errorReconnect).toBeTruthy();     // a reconnect is scheduled
+
+        // Advance well past where the leaked timer would have fired: it must not.
+        jest.advanceTimersByTime(1000);
+        expect(pingErrors).toHaveLength(0);
+
+        // The log reflects a clean disconnect, never a ping failure.
+        expect(device.log.info).toHaveBeenCalledWith('Disconnected from', device.context.name);
+        const logged = device.log.info.mock.calls.flat().join(' ');
+        expect(logged).not.toMatch(/ERR_PING_TIMED_OUT/);
+    });
+
+    test("the 'close' teardown clears any lingering heartbeat timer", () => {
+        const device = makeDevice('3.5');
+        const socket = establish(device);
+
+        socket._pinger = setTimeout(() => {}, 10000);
+        socket.emit('close');
+
+        expect(socket._pinger).toBeNull();
+        expect(device.connected).toBe(false);
     });
 });
