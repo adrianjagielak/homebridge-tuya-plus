@@ -472,6 +472,20 @@
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['FanLight'].includes(model.devices[arrayIndices].type);"
               }
             },
+            "useStringsFan": {
+              "type": "boolean",
+              "placeholder": true,
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['FanLight'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "useStringsLight": {
+              "type": "boolean",
+              "placeholder": true,
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['FanLight'].includes(model.devices[arrayIndices].type);"
+              }
+            },
             "dpChildLock": {
               "type": "integer",
               "placeholder": "6",
