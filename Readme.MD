@@ -69,6 +69,14 @@ Protocol **3.5** is currently the newest Tuya LAN protocol in existence: it is t
 
 This plugin is nevertheless **3.6-ready**: if a device reports a newer protocol version (e.g. `3.6`) in its broadcast, the plugin automatically talks to it using the newest (3.5/GCM) protocol stack while tagging payloads with the device's reported version — the same forward-compatibility strategy used by tinytuya. Should such a device misbehave, you can pin it to a specific protocol with the `forceVersion` device option (e.g. `"forceVersion": "3.5"`), or use `version` to set a protocol for devices that can't be discovered (e.g. on another subnet).
 
+## Cloud devices (for hardware that can't be controlled locally)
+
+This is a **LAN-first** plugin — virtually every Tuya device is controlled locally, which is faster, more private, and keeps working without internet. A few devices, though, simply **can't** be reached over the LAN: battery-powered "sleepy" devices — most notably the multi-zone **irrigation / faucet timers** — sleep almost all the time and only ever connect out to Tuya's cloud, so they never answer on the local network (Tuya's own docs confirm LAN control is unavailable for these low-power devices).
+
+For exactly these cases the plugin can talk to a device through the **Tuya Cloud** instead — strictly **opt-in, per device**. You add your Tuya Cloud project credentials once and set `"cloud": true` on the device; everything else (including the full Irrigation System accessory — all zones, durations, battery) works the same. Live updates arrive instantly over Tuya's MQTT message service.
+
+👉 **[Tuya Cloud Setup guide](https://github.com/adrianjagielak/homebridge-tuya-plus/blob/main/wiki/Tuya-Cloud-Setup.md)** — how to get credentials and configure a cloud device.
+
 ## Installation Instructions
 
 #### Option 1: Install via Homebridge Config UI X:

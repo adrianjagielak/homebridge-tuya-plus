@@ -732,6 +732,20 @@ Multi-valve Tuya irrigation/sprinkler controllers (the battery-powered Wi-Fi "fa
 
 Because these devices are slow to respond, all zone changes that happen close together — turning the whole system on/off, or running a scene that toggles several zones — are merged into a **single** Tuya command instead of a burst of them.
 
+> **⚠️ Can't connect locally?** Most of these are battery-powered **"sleepy"** devices that **cannot be controlled over the LAN at all** — they sleep to save battery and only ever reach Tuya's cloud. If discovery never finds yours (or it won't connect), control it over the **[Tuya Cloud](https://github.com/adrianjagielak/homebridge-tuya-plus/blob/main/wiki/Tuya-Cloud-Setup.md)** instead: add cloud credentials once and set `"cloud": true` on the device. Everything below works the same — data-points are just addressed by their Tuya *code* (e.g. `switch_1`), which the plugin logs on startup.
+
+```json5
+// Cloud example (also needs a top-level "cloud" credentials block — see the Tuya Cloud Setup guide)
+{
+    "name": "Garden Irrigation",
+    "type": "IrrigationSystem",
+    "id": "bfae6739xxxxxxxxxxxxxx",   // the cloud Device ID
+    "cloud": true,
+    "valveCount": 4,
+    "noRainSensor": true              // many battery timers have no rain sensor
+}
+```
+
 #### Minimal Configuration
 
 The defaults match the common 4-zone layout (valves A–D on data-points `1`–`4`, battery on `46`, rain on `49`):

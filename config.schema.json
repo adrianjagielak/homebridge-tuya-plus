@@ -19,12 +19,71 @@
         "placeholder": "Timeout (millisecond) for device IP address discovery",
         "default": 60000
       },
+      "cloud": {
+        "type": "object",
+        "title": "Tuya Cloud (optional — only for devices that can't be reached over the LAN)",
+        "description": "This plugin is LAN-first. A few devices — notably battery-powered 'sleepy' irrigation timers — sleep most of the time and only ever talk to Tuya's cloud, so they cannot be controlled locally. Create a free Cloud project at iot.tuya.com, enter its credentials here, then tick 'Control via Tuya Cloud' on each such device. See the wiki for step-by-step setup.",
+        "properties": {
+          "accessId": {
+            "type": "string",
+            "title": "Access ID / Client ID"
+          },
+          "accessKey": {
+            "type": "string",
+            "title": "Access Secret / Client Secret"
+          },
+          "region": {
+            "type": "string",
+            "title": "Data center / region",
+            "default": "us",
+            "description": "Must match the region your Tuya / Smart Life app account is registered in.",
+            "oneOf": [
+              { "title": "Central Europe", "enum": ["eu"] },
+              { "title": "Western Europe (Azure)", "enum": ["eu-w"] },
+              { "title": "Western America", "enum": ["us"] },
+              { "title": "Eastern America (Azure)", "enum": ["us-e"] },
+              { "title": "China", "enum": ["cn"] },
+              { "title": "India", "enum": ["in"] },
+              { "title": "Singapore", "enum": ["sg"] }
+            ]
+          },
+          "username": {
+            "type": "string",
+            "title": "App account email/phone (Smart Home projects only)",
+            "description": "For 'Smart Home' Cloud projects: the Tuya / Smart Life app account that owns the devices. Leave blank for 'Custom' projects (which link devices by QR scan)."
+          },
+          "password": {
+            "type": "string",
+            "title": "App account password (Smart Home projects only)"
+          },
+          "countryCode": {
+            "type": "string",
+            "title": "Country calling code (Smart Home projects only)",
+            "placeholder": "e.g. 1, 44, 48"
+          },
+          "schema": {
+            "type": "string",
+            "title": "App (Smart Home projects only)",
+            "default": "tuyaSmart",
+            "oneOf": [
+              { "title": "Tuya Smart", "enum": ["tuyaSmart"] },
+              { "title": "Smart Life", "enum": ["smartlife"] }
+            ]
+          },
+          "realtime": {
+            "type": "boolean",
+            "title": "Realtime updates (MQTT)",
+            "default": true,
+            "description": "Receive instant updates over Tuya's MQTT message service (uses the 'mqtt' package, installed automatically). If disabled, devices stay controllable and show their state at startup, but external changes (physical buttons, the device's own timers) won't be reflected until restart."
+          }
+        }
+      },
       "devices": {
         "type": "array",
         "orderable": false,
         "items": {
           "type": "object",
-          "required": ["type", "name", "id", "key"],
+          "required": ["type", "name", "id"],
           "properties": {
             "type": {
               "type": "string",
@@ -136,8 +195,18 @@
               }
             },
             "key": {
-              "title": "Tuya Key",
+              "title": "Tuya Key (local key — required for LAN devices)",
               "type": "string",
+              "description": "The device's local key. Required for normal (LAN) devices. Not needed for cloud devices (tick 'Control via Tuya Cloud' below).",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices].type !== 'null';"
+              }
+            },
+            "cloud": {
+              "type": ["boolean", "object"],
+              "title": "Control via Tuya Cloud (instead of the LAN)",
+              "default": false,
+              "description": "Enable for devices that can't be reached locally (e.g. battery-powered irrigation timers). Uses the platform-level 'cloud' credentials above. Advanced: instead of a checkbox you can set this to an object with per-device { accessId, accessKey, region, … } to use different credentials for this one device.",
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices].type !== 'null';"
               }
@@ -648,7 +717,7 @@
               "type": "integer",
               "title": "Number of Valves / Zones",
               "placeholder": 4,
-              "description": "How many valves/zones the controller has. They are assumed to be on data-points 1, 2, 3, … For non-sequential data-points use the 'valves' list instead.",
+              "description": "How many valves/zones the controller has. They are assumed to be on data-points 1, 2, 3, … (or, for cloud devices, on the codes switch_1, switch_2, …). For non-sequential data-points use the 'valves' list instead.",
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type);"
               }
@@ -662,7 +731,7 @@
                 "type": "object",
                 "properties": {
                   "name": { "type": "string", "title": "Zone name", "placeholder": "Lawn" },
-                  "dp": { "type": "integer", "title": "Data-point", "placeholder": 1 },
+                  "dp": { "type": ["integer", "string"], "title": "Data-point (numeric id, or cloud code)", "placeholder": "1 or switch_1" },
                   "defaultDuration": { "type": "integer", "title": "Default run time (seconds, 0 = run indefinitely)", "placeholder": 600 }
                 }
               },
@@ -724,9 +793,9 @@
               }
             },
             "dpBattery": {
-              "type": "integer",
-              "placeholder": 46,
-              "title": "Battery data-point",
+              "type": ["integer", "string"],
+              "placeholder": "46 or battery_percentage",
+              "title": "Battery data-point (numeric id, or cloud code)",
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type) && !model.devices[arrayIndices].noBattery;"
               }
@@ -741,9 +810,9 @@
               }
             },
             "dpCharging": {
-              "type": "integer",
-              "placeholder": 101,
-              "title": "Charging-status data-point",
+              "type": ["integer", "string"],
+              "placeholder": "101 or charge_state",
+              "title": "Charging-status data-point (numeric id, or cloud code)",
               "description": "Boolean data-point reporting whether the battery is charging (e.g. solar / USB-C units). HomeKit shows Charging / Not Charging; if your controller doesn't report this, it shows Not Chargeable.",
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type) && !model.devices[arrayIndices].noBattery;"
@@ -778,9 +847,9 @@
               }
             },
             "dpRain": {
-              "type": "integer",
-              "placeholder": 49,
-              "title": "Rain sensor data-point",
+              "type": ["integer", "string"],
+              "placeholder": "49 or rain_sensor_state",
+              "title": "Rain sensor data-point (numeric id, or cloud code)",
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type) && !model.devices[arrayIndices].noRainSensor;"
               }
