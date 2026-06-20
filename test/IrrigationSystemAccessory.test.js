@@ -298,6 +298,38 @@ describe('IrrigationSystemAccessory — valve activation & timer', () => {
         jest.advanceTimersByTime(600 * 1000);
         expect(device.update.mock.calls.length).toBe(calls);
     });
+
+    test('valve Active onGet reports the optimistic value, not the lagging device state (no flicker)', () => {
+        // Cloud devices don't advance device.state until the realtime stream
+        // echoes the write back. Emulate that (update is a no-op on state) and
+        // confirm a freshly-pressed valve keeps reading ON instead of briefly
+        // reverting to the pre-press value.
+        const { accessory, device } = makeHarness({ '1': false }, { defaultDuration: 0 });
+        device.update.mockImplementation(() => true);
+        const v = valve(accessory, 1);
+
+        v.getCharacteristic(Characteristic.Active).triggerSet(1);
+        jest.advanceTimersByTime(500);
+
+        expect(device.state['1']).toBe(false); // not echoed yet
+        expect(v.getCharacteristic(Characteristic.Active).triggerGet()).toBe(Characteristic.Active.ACTIVE);
+    });
+
+    test('system Active onGet reports the cached aggregate, not the lagging device state', () => {
+        const { accessory, device } = makeHarness({ '1': false, '2': false }, { defaultDuration: 0 });
+        device.update.mockImplementation(() => true);
+        valve(accessory, 1).getCharacteristic(Characteristic.Active).triggerSet(1);
+        jest.advanceTimersByTime(500);
+
+        expect(irrigation(accessory).getCharacteristic(Characteristic.Active).triggerGet())
+            .toBe(Characteristic.Active.ACTIVE);
+    });
+
+    test('Active onGet still throws while disconnected (HomeKit shows "No Response")', () => {
+        const { accessory, device } = makeHarness({ '1': false });
+        device.connected = false;
+        expect(() => valve(accessory, 1).getCharacteristic(Characteristic.Active).triggerGet()).toThrow();
+    });
 });
 
 describe('IrrigationSystemAccessory — write batching (one Tuya command)', () => {
