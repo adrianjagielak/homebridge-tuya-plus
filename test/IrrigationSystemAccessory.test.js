@@ -444,3 +444,52 @@ describe('IrrigationSystemAccessory — rain mapping', () => {
         expect(instance._rainDetected('no_rain')).toBe(false);
     });
 });
+
+describe('IrrigationSystemAccessory — cloud mode (data-points keyed by code)', () => {
+    // Mirrors a real Tuya "sfkzq" watering controller reached over the cloud:
+    // valves are switch_1..4, battery is battery_percentage, and there is no
+    // rain sensor.
+    const cloudState = () => ({ switch_1: false, switch_2: false, switch_3: false, switch_4: false, battery_percentage: 99 });
+    const cloudCtx = { cloud: true, noRainSensor: true };
+
+    beforeEach(() => jest.useFakeTimers());
+    afterEach(() => { jest.clearAllTimers(); jest.useRealTimers(); });
+
+    test('default valves use Tuya codes switch_1..switch_4 (not numeric ids)', () => {
+        const { accessory } = makeHarness(cloudState(), cloudCtx);
+        ['switch_1', 'switch_2', 'switch_3', 'switch_4'].forEach(code => {
+            expect(valve(accessory, code)).toBeTruthy();
+        });
+        expect(valve(accessory, '1')).toBeFalsy();
+    });
+
+    test('turning a zone on writes the code/value to the device', () => {
+        const { accessory, device } = makeHarness(cloudState(), cloudCtx);
+        valve(accessory, 'switch_1').getCharacteristic(Characteristic.Active).triggerSet(1);
+        jest.advanceTimersByTime(500);
+        expect(device.update).toHaveBeenCalledWith({ switch_1: true });
+    });
+
+    test('battery is read from the battery_percentage code', () => {
+        const { accessory } = makeHarness(cloudState(), cloudCtx);
+        const battery = accessory.getService(Service.Battery);
+        expect(battery.getCharacteristic(Characteristic.BatteryLevel).value).toBe(99);
+    });
+
+    test('a realtime change keyed by code is reflected in HomeKit', () => {
+        const { accessory, device } = makeHarness(cloudState(), cloudCtx);
+        device.emitChange({ switch_2: true });
+        expect(valve(accessory, 'switch_2').getCharacteristic(Characteristic.Active).value).toBe(Characteristic.Active.ACTIVE);
+    });
+
+    test('an explicit valve list may use custom codes', () => {
+        const { accessory, device } = makeHarness(
+            { zone_a: false, zone_b: false, battery_percentage: 50 },
+            { cloud: true, noRainSensor: true, valves: [{ name: 'A', dp: 'zone_a' }, { name: 'B', dp: 'zone_b' }] }
+        );
+        expect(valve(accessory, 'zone_a')).toBeTruthy();
+        valve(accessory, 'zone_b').getCharacteristic(Characteristic.Active).triggerSet(1);
+        jest.advanceTimersByTime(500);
+        expect(device.update).toHaveBeenCalledWith({ zone_b: true });
+    });
+});

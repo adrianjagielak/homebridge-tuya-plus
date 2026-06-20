@@ -1,5 +1,8 @@
 const TuyaAccessory = require('./lib/TuyaAccessory');
 const TuyaDiscovery = require('./lib/TuyaDiscovery');
+const TuyaCloudApi = require('./lib/TuyaCloudApi');
+const TuyaCloudDevice = require('./lib/TuyaCloudDevice');
+const TuyaCloudMessaging = require('./lib/TuyaCloudMessaging');
 
 const OutletAccessory = require('./lib/OutletAccessory');
 const SimpleLightAccessory = require('./lib/SimpleLightAccessory');
@@ -35,6 +38,13 @@ const PLATFORM_NAME = 'TuyaLan';
 // rooms, automations).
 const UUID_SEED = 'homebridge-tuya';
 const DEFAULT_DISCOVER_TIMEOUT = 60000;
+
+// Lenient boolean coercion (matches BaseAccessory._coerceBoolean) so config
+// values like true / "true" / 1 all read as true.
+const coerceBoolean = (b, df = false) =>
+    typeof b === 'boolean' ? b :
+    typeof b === 'string' ? b.toLowerCase().trim() === 'true' :
+    typeof b === 'number' ? b !== 0 : df;
 
 const CLASS_DEF = {
     outlet: OutletAccessory,
@@ -82,6 +92,11 @@ class TuyaLan {
         [this.log, this.config, this.api] = [...props];
 
         this.cachedAccessories = new Map();
+        // Shared Tuya Cloud clients, keyed by credential set, so several
+        // cloud devices on the same project share one token + one realtime
+        // (MQTT) connection. Empty unless cloud devices are configured.
+        this.cloudApis = new Map();
+        this.cloudMessagers = new Map();
         this.api.hap.EnergyCharacteristics = require('./lib/EnergyCharacteristics')(this.api.hap);
 
         if(!this.config || !this.config.devices) {
@@ -100,10 +115,12 @@ class TuyaLan {
         const devices = {};
         const connectedDevices = [];
         const fakeDevices = [];
+        const cloudDevices = [];
         this.config.devices.forEach(device => {
             try {
                 device.id = ('' + device.id).trim();
-                device.key = ('' + device.key).trim();
+                // Cloud devices don't need a local key; only trim when present.
+                if (device.key != null) device.key = ('' + device.key).trim();
                 device.type = ('' + device.type).trim();
 
                 device.ip = ('' + (device.ip || '')).trim();
@@ -112,12 +129,20 @@ class TuyaLan {
             if (!device.type) return this.log.error('%s (%s) doesn\'t have a type defined.', device.name || 'Unnamed device', device.id);
             if (!CLASS_DEF[device.type.toLowerCase()]) return this.log.error('%s (%s) doesn\'t have a valid type defined.', device.name || 'Unnamed device', device.id);
 
-            if (device.fake) fakeDevices.push({name: device.id.slice(8), ...device});
+            if (this._isCloudDevice(device)) cloudDevices.push({name: device.id.slice(8), ...device});
+            else if (device.fake) fakeDevices.push({name: device.id.slice(8), ...device});
             else devices[device.id] = {name: device.id.slice(8), ...device};
         });
 
+        // Cloud devices are reached over the internet, not the LAN, so they need
+        // no discovery — wire them up right away.
+        cloudDevices.forEach(config => this._addCloudAccessory(config));
+
         const deviceIds = Object.keys(devices);
-        if (deviceIds.length === 0) return this.log.error('No valid configured devices found.');
+        if (deviceIds.length === 0) {
+            if (cloudDevices.length === 0) this.log.error('No valid configured devices found.');
+            return; // cloud-only (or empty) configuration: nothing to discover over LAN
+        }
 
         this.log.info('Starting discovery...');
 
@@ -174,6 +199,70 @@ class TuyaLan {
                 }
             });
         }, this.config.discoverTimeout ?? DEFAULT_DISCOVER_TIMEOUT);
+    }
+
+    /* ------------------------------------------------------------------ *
+     *  Tuya Cloud helpers (for devices that can't be reached over the LAN,
+     *  e.g. battery-powered "sleepy" irrigation timers). This plugin stays
+     *  LAN-first; these paths are only exercised by devices opting in with
+     *  `cloud: true` (or a per-device `cloud` credentials object).
+     * ------------------------------------------------------------------ */
+
+    _isCloudDevice(device) {
+        return !!(device && (device.cloud === true || (typeof device.cloud === 'object' && device.cloud)));
+    }
+
+    // Effective cloud credentials/options for a device: the platform-level
+    // `cloud` block, overlaid with any per-device `cloud` object.
+    _resolveCloudConfig(device) {
+        const platform = (this.config.cloud && typeof this.config.cloud === 'object') ? this.config.cloud : {};
+        const perDevice = (typeof device.cloud === 'object' && device.cloud) ? device.cloud : {};
+        return {...platform, ...perDevice};
+    }
+
+    // One TuyaCloudApi per credential set, so multiple cloud devices on the
+    // same Tuya project share a single token.
+    _getCloudApi(cloudCfg) {
+        const key = TuyaCloudApi.keyFor(cloudCfg);
+        if (!this.cloudApis.has(key)) {
+            this.cloudApis.set(key, new TuyaCloudApi({...cloudCfg, log: this.log}));
+        }
+        return this.cloudApis.get(key);
+    }
+
+    // One shared realtime (MQTT) stream per credential set, unless realtime is
+    // disabled. Returns null when realtime is off — the device then shows its
+    // initial state and stays controllable, but won't receive live updates.
+    _getCloudMessaging(api, cloudCfg) {
+        const realtime = cloudCfg.realtime === undefined ? true : coerceBoolean(cloudCfg.realtime, true);
+        if (!realtime) return null;
+        const key = TuyaCloudApi.keyFor(cloudCfg);
+        if (!this.cloudMessagers.has(key)) {
+            this.cloudMessagers.set(key, new TuyaCloudMessaging({api, log: this.log}));
+        }
+        return this.cloudMessagers.get(key);
+    }
+
+    _addCloudAccessory(config) {
+        const cloudCfg = this._resolveCloudConfig(config);
+        if (!cloudCfg.accessId || !cloudCfg.accessKey) {
+            return this.log.error('%s (%s) is configured for the Tuya Cloud, but no credentials were found. Add a top-level "cloud" block (accessId, accessKey, region) or a per-device "cloud" object.', config.name, config.id);
+        }
+
+        const api = this._getCloudApi(cloudCfg);
+        const messaging = this._getCloudMessaging(api, cloudCfg);
+
+        this.log.info('Adding cloud device: %s (%s) via %s', config.name, config.id, api.endpoint);
+
+        this.addAccessory(new TuyaCloudDevice({
+            ...config,
+            cloud: true, // normalise so accessories can detect cloud mode
+            cloudApi: api,
+            messaging,
+            log: this.log,
+            UUID: UUID.generate(UUID_SEED + ':' + config.id),
+            connect: false
+        }));
     }
 
     registerPlatformAccessories(platformAccessories) {

@@ -31,6 +31,9 @@
     "qrcode": "^1.4.1",
     "yaml": "^1.6.0"
   },
+  "optionalDependencies": {
+    "mqtt": "^5.15.1"
+  },
   "keywords": [
     "homebridge-plugin",
     "homebridge",

@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. This project uses [semantic versioning](https://semver.org/).
 
+## Unreleased
+
+* [+] **Tuya Cloud support for devices that can't be reached over the LAN** — most notably battery-powered "sleepy" irrigation/sprinkler timers, which sleep almost all the time and only ever talk to Tuya's cloud, so the local protocol can never reach them. The plugin stays LAN-first: cloud is strictly opt-in. Add a top-level `cloud` credentials block (or a per-device `cloud` object) and set `"cloud": true` on the device.
+  * Realtime updates arrive over Tuya's **MQTT** message service (via the optional `mqtt` dependency, installed automatically); initial state and control use the Tuya OpenAPI. There is no polling.
+  * Works with both **Custom** and **Smart Home** Cloud projects (the latter via app-account login).
+  * The existing **IrrigationSystem** accessory works unchanged over the cloud — its data-points are simply addressed by Tuya "code" (e.g. `switch_1`, `battery_percentage`) instead of a numeric id; the device logs its codes on startup. Battery-only controllers with no rain sensor: set `"noRainSensor": true`.
+  * See the wiki: **[Tuya Cloud Setup](https://github.com/adrianjagielak/homebridge-tuya-plus/blob/main/wiki/Tuya-Cloud-Setup.md)**.
+
 ## 2.0.1 (2021-03-25)
 This update includes the following changes:
 
