@@ -99,8 +99,22 @@ won't affect normal installs. To try the latest in-development build:
 sudo npm install -g homebridge-tuya-plus@dev
 ```
 
-These are versioned like `3.13.1-dev.<n>` and may be unstable; use the default
+These are versioned like `3.14.0-dev.<n>` and may be unstable; use the default
 install above for production.
+
+#### Testing a specific pull request:
+
+Maintainers can publish an unmerged PR as a throwaway test build by commenting
+`/publish` on it. The build goes to its own `pr-<number>` tag — never `latest`
+or `dev` — so it never reaches normal installs. The bot replies on the PR with
+the exact install command, e.g.:
+
+```
+sudo npm install -g homebridge-tuya-plus@pr-57
+```
+
+Each build also gets a unique, immutable version like `3.14.0-pr.57.<n>` that you
+can pin or paste into the Homebridge UI's "Install Alternate Version" field.
 
 ## Configuration
 > UI

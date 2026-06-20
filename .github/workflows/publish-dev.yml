@@ -1,56 +1,97 @@
-name: Publish dev to npm
+name: Publish to npm (dev + PR test builds)
 
-# Publishes commits on `main` to npm under the `dev` dist-tag.
+# This workflow publishes two kinds of UNSTABLE builds to npm. Stable releases
+# always live on the `latest` dist-tag and are cut manually; nothing here ever
+# touches `latest`.
 #
-# Versioning:
-#   * Dev builds target the NEXT minor release, since releases here are
-#     usually a minor bump. With package.json at e.g. 3.13.0, dev builds
-#     are published as 3.14.0-dev.<run-number> (minor +1, patch reset to 0,
-#     prerelease tag = the GitHub Actions run number). In semver these sort
-#     below the eventual 3.14.0 release, so `latest` always wins once cut.
-#   * Release commits are skipped: if a push changes package.json's version
-#     (i.e. you bumped it to cut a real release and publish to npm
-#     manually), no dev build is published for that push.
+# 1. Dev builds (automatic) — every push to `main`:
+#      * Published under the `dev` dist-tag.
+#      * Versioned as <next-minor>.0-dev.<run-number> (e.g. 3.14.0-dev.42).
+#        package.json at 3.13.0 -> dev builds target 3.14.0. In semver these
+#        sort below the eventual 3.14.0 release, so `latest` always wins.
+#      * Release commits are skipped: if a push changes package.json's version
+#        (you bumped it to cut a real release), no dev build is published.
 #
-# Security model (why a malicious PR cannot steal publishing rights):
-#   * No npm token is stored anywhere. Publishing uses npm Trusted
-#     Publishing (OIDC): GitHub mints a short-lived, cryptographically
-#     signed token that npm only accepts when its claims match THIS repo +
-#     THIS workflow file. There is no durable credential to exfiltrate.
-#   * This workflow never runs on `pull_request`, only on pushes to `main`
-#     (post-merge) and manual dispatch — so fork PRs get nothing.
-#   * The privileged `publish` job is minimal and isolated: it does not
-#     run `npm ci`, a build, or tests, and uses `--ignore-scripts`, so no
-#     repo/dependency code executes while the OIDC permission is present.
-#     Tests run in a separate, unprivileged job that gates publishing, and
-#     the version is computed in an unprivileged `prepare` job.
+# 2. PR test builds (manual) — a maintainer comments `/publish` on a PR:
+#      * Published under a PR-specific `pr-<N>` dist-tag (e.g. pr-57), with a
+#        unique version <next-minor>.0-pr.<N>.<run-number> (e.g. 3.14.0-pr.57.43).
+#      * Lets you install and try an unmerged PR on real hardware without
+#        disturbing `latest` OR `dev`:  npm i -g homebridge-tuya-plus@pr-57
+#      * Cleanup is a token-free local step: run `npm run cleanup:pr-tags` to
+#        delete the `pr-<N>` tags of merged/closed PRs (uses your npm login).
+#        OIDC can't manage dist-tags, so this is intentionally not a CI job.
+#      * Triggered ONLY by someone with push (write) access to the repo — the
+#        owner and any write/maintain/admin collaborator. A drive-by `/publish`
+#        from an outside PR author (no push access) does nothing.
 #
-# One-time setup required for this to succeed (see PR/commit notes):
+# Why a separate `pr-<N>` tag instead of reusing `dev`: `dev` is a moving
+# channel users follow to get "latest main". Publishing unmerged PR code there
+# would feed untested code to everyone on `@dev`. A per-PR tag keeps three clear
+# lanes — `latest` (everyone), `dev` (main followers), `pr-<N>` (that one PR).
+#
+# ---------------------------------------------------------------------------
+# Security model (why a malicious PR cannot steal publishing rights)
+# ---------------------------------------------------------------------------
+#   * No npm token is stored anywhere. Publishing uses npm Trusted Publishing
+#     (OIDC): GitHub mints a short-lived token that npm only accepts when its
+#     claims match THIS repo + THIS workflow file (publish-dev.yml) + the
+#     `npm-dev` environment. There is no durable credential to exfiltrate.
+#   * npm allows only ONE trusted publisher per package, so BOTH paths must run
+#     from this file and use `environment: npm-dev` to authenticate. (The PR
+#     path needs no extra npm/GitHub setup beyond the existing dev config.)
+#   * The `dev` path never runs on `pull_request`; the PR path runs on
+#     `issue_comment`, which always uses the workflow file from `main` — a PR
+#     cannot alter this file to change what runs.
+#   * Untrusted PR code is fenced off from the publishing credential:
+#       - `pr-test` checks out and runs the PR's code (npm ci / lint / test)
+#         but is UNPRIVILEGED: `contents: read`, no secrets, no id-token, and
+#         `persist-credentials: false`. Same blast radius as ordinary fork CI.
+#       - `pr-publish` HOLDS the OIDC permission but runs NO PR code: no
+#         `npm ci`, no build, no tests, and `--ignore-scripts` on both
+#         `npm version` and `npm publish`, so no lifecycle script executes
+#         while the credential is present. It only packs + uploads the tarball.
+#       - The OIDC token is scoped to THIS package, so a PR that renames the
+#         package in package.json cannot hijack a different one (publish fails).
+#       - The head SHA is resolved once, up front, and pinned for every later
+#         job, so a push landed after `/publish` cannot swap in different code.
+#   * Comment/reaction jobs use a write-scoped token but check out NO PR code.
+#
+# ---------------------------------------------------------------------------
+# One-time setup (already in place for the dev path; PR path reuses it):
 #   1. npmjs.com -> package Settings -> Trusted Publisher:
 #        Publisher: GitHub Actions
 #        Organization/user: adrianjagielak
 #        Repository:        homebridge-tuya-plus
 #        Workflow filename: publish-dev.yml
 #        Environment:       npm-dev
-#   2. GitHub repo Settings -> Environments -> create `npm-dev`,
-#      restrict deployment branches to `main` (optional: required reviewer).
+#   2. GitHub repo Settings -> Environments -> `npm-dev`, deployment branches
+#      restricted to `main` (optional: required reviewer). The PR path runs on
+#      `main`'s ref too, so this restriction is satisfied for both paths.
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
+  # Maintainer types `/publish` on a PR to cut a test build of that PR.
+  issue_comment:
+    types: [created]
 
-# Least privilege by default; only the publish job opts into id-token.
+# Least privilege by default; jobs opt into more only where needed.
 permissions:
   contents: read
 
-# Don't cancel an in-flight publish; let each commit publish its version.
+# Serialize per lane, never cancel an in-flight publish: `publish-dev` for the
+# dev path, `publish-pr-<N>` per PR for the PR path (so they don't block).
 concurrency:
-  group: publish-dev
+  group: ${{ github.event_name == 'issue_comment' && format('publish-pr-{0}', github.event.issue.number) || 'publish-dev' }}
   cancel-in-progress: false
 
 jobs:
+  # ===========================================================================
+  # DEV PATH — push to main / manual dispatch. (Behavior unchanged.)
+  # ===========================================================================
   test:
+    if: github.event_name != 'issue_comment'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -65,6 +106,7 @@ jobs:
   # computes the dev version. Kept out of the `publish` job so no extra work
   # runs while the OIDC publishing permission is present.
   prepare:
+    if: github.event_name != 'issue_comment'
     runs-on: ubuntu-latest
     outputs:
       should_publish: ${{ steps.check.outputs.should_publish }}
@@ -113,8 +155,8 @@ jobs:
 
   publish:
     needs: [test, prepare]
-    # Skip release commits (version bumped in this push).
-    if: needs.prepare.outputs.should_publish == 'true'
+    # Dev path only, and skip release commits (version bumped in this push).
+    if: github.event_name != 'issue_comment' && needs.prepare.outputs.should_publish == 'true'
     runs-on: ubuntu-latest
     # Bind this environment in repo Settings to the `main` branch so that
     # only main can ever reach the publish step.
@@ -144,3 +186,236 @@ jobs:
       # --provenance attaches a signed build attestation (needs a public repo).
       - name: Publish (dev tag)
         run: npm publish --tag dev --provenance --ignore-scripts
+
+  # ===========================================================================
+  # PR PATH — maintainer comments `/publish` on a PR. (New.)
+  # ===========================================================================
+
+  # Gate + ack. Runs NO PR code. Verifies the commenter is a maintainer,
+  # resolves & pins the PR head, and reads the version base from trusted `main`.
+  authorize:
+    if: >
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request &&
+      startsWith(github.event.comment.body, '/publish') &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # checkout main to read the version base
+      issues: write # react to / comment on the triggering comment
+      pull-requests: write
+    outputs:
+      authorized: ${{ steps.auth.outputs.authorized }}
+      head_sha: ${{ steps.auth.outputs.head_sha }}
+      head_repo: ${{ steps.auth.outputs.head_repo }}
+      pr_number: ${{ steps.auth.outputs.pr_number }}
+      base_version: ${{ steps.basever.outputs.base_version }}
+    steps:
+      - name: Verify maintainer & resolve PR head
+        id: auth
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Require the command to be exactly `/publish` (optional trailing text).
+            const body = (context.payload.comment.body || '').trim();
+            if (!/^\/publish(?:\s|$)/.test(body)) {
+              core.setOutput('authorized', 'false');
+              return;
+            }
+            // Authorization: the commenter must have PUSH (write) access. The
+            // REST `permission` field uses legacy roles, so `admin`/`write`
+            // covers admin/maintain/write (can push) and excludes triage/read.
+            // This is stricter and truer to intent than author_association (a
+            // COLLABORATOR could be read-only). The job `if` is only a coarse
+            // pre-filter; this API check is the authoritative gate.
+            const username = context.payload.comment.user.login;
+            let canPush = false;
+            try {
+              const { data: perm } = await github.rest.repos.getCollaboratorPermissionLevel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                username,
+              });
+              canPush = ['admin', 'write'].includes(perm.permission);
+              core.info(`${username} permission: ${perm.permission} (role: ${perm.role_name || 'n/a'})`);
+            } catch (err) {
+              // If the permission API can't be read, fall back to the trusted
+              // author_association set so a maintainer is never locked out. This
+              // still keeps out drive-by PR authors (CONTRIBUTOR / NONE).
+              const assoc = context.payload.comment.author_association;
+              canPush = ['OWNER', 'MEMBER', 'COLLABORATOR'].includes(assoc);
+              core.warning(`Permission API unavailable (${err.status || err.message}); fell back to association ${assoc}.`);
+            }
+            if (!canPush) {
+              core.notice(`Ignoring /publish from ${username}: no push access.`);
+              core.setOutput('authorized', 'false');
+              return;
+            }
+            // Resolve the PR's CURRENT head and pin this exact SHA for every
+            // later job, so a push landed after `/publish` can't swap in code.
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.issue.number,
+            });
+            if (!pr.head.repo) {
+              core.setFailed('PR head repository is unavailable (fork deleted?).');
+              core.setOutput('authorized', 'false');
+              return;
+            }
+            core.setOutput('head_sha', pr.head.sha);
+            core.setOutput('head_repo', pr.head.repo.full_name);
+            core.setOutput('pr_number', String(pr.number));
+            core.setOutput('authorized', 'true');
+            // Acknowledge so the maintainer sees the command was accepted.
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'eyes',
+            });
+
+      # Version base comes from TRUSTED main, never the PR's package.json, so an
+      # untrusted PR cannot influence the published version.
+      - name: Checkout main (trusted)
+        if: steps.auth.outputs.authorized == 'true'
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Compute version base from main
+        id: basever
+        if: steps.auth.outputs.authorized == 'true'
+        run: |
+          NEXT="$(node -e "const v=require('./package.json').version.split('.'); v[1]=Number(v[1])+1; v[2]=0; console.log(v.join('.'))")"
+          echo "base_version=$NEXT" >> "$GITHUB_OUTPUT"
+          echo "Version base (from main): $NEXT"
+
+  # Unprivileged gate: runs the PR's code. No secrets, read-only token, no
+  # id-token, no persisted git credentials — same trust level as fork CI.
+  pr-test:
+    needs: authorize
+    if: needs.authorize.outputs.authorized == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ needs.authorize.outputs.head_repo }}
+          ref: ${{ needs.authorize.outputs.head_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run test
+
+  # Privileged publish. Holds the OIDC permission but runs NO PR code: no
+  # npm ci, no build, no tests; --ignore-scripts on version + publish.
+  pr-publish:
+    needs: [authorize, pr-test]
+    if: needs.authorize.outputs.authorized == 'true'
+    runs-on: ubuntu-latest
+    # Must match the trusted publisher's environment (npm allows one publisher
+    # per package). issue_comment runs on main's ref, so a main-only branch
+    # restriction on this environment is satisfied.
+    environment: npm-dev
+    permissions:
+      contents: read
+      id-token: write # OIDC -> npm Trusted Publishing (no stored token)
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+      tag: ${{ steps.ver.outputs.tag }}
+    steps:
+      # The PR's code — but we never execute it (see --ignore-scripts below).
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ needs.authorize.outputs.head_repo }}
+          ref: ${{ needs.authorize.outputs.head_sha }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      # Trusted Publishing (OIDC) requires npm >= 11.5.1.
+      - name: Ensure OIDC-capable npm
+        run: npm install -g npm@latest
+
+      # Unique, immutable version + a PR-specific dist-tag. Base comes from main
+      # (via authorize), so the PR's package.json cannot influence versioning.
+      - name: Compute PR build version + tag
+        id: ver
+        env:
+          BASE: ${{ needs.authorize.outputs.base_version }}
+          PR: ${{ needs.authorize.outputs.pr_number }}
+        run: |
+          VERSION="${BASE}-pr.${PR}.${GITHUB_RUN_NUMBER}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=pr-${PR}" >> "$GITHUB_OUTPUT"
+          echo "Will publish $VERSION under dist-tag pr-${PR}"
+
+      # Writes package.json on the runner only; --ignore-scripts so no PR
+      # version/preversion/postversion hook runs with the credential present.
+      - name: Set version
+        run: npm version "${{ steps.ver.outputs.version }}" --no-git-tag-version --allow-same-version --ignore-scripts
+
+      # Published under pr-<N>, NEVER latest/dev. No NODE_AUTH_TOKEN: npm
+      # exchanges the OIDC id-token for a short-lived, package-scoped credential.
+      # --ignore-scripts ensures no PR lifecycle script runs with that credential.
+      - name: Publish (pr-<N> tag)
+        run: npm publish --tag "${{ steps.ver.outputs.tag }}" --provenance --ignore-scripts
+
+  # Report the outcome back on the PR. Runs NO PR code.
+  notify:
+    needs: [authorize, pr-publish]
+    if: always() && needs.authorize.outputs.authorized == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          PUBLISH_RESULT: ${{ needs.pr-publish.result }}
+          PR_NUMBER: ${{ needs.authorize.outputs.pr_number }}
+          HEAD_SHA: ${{ needs.authorize.outputs.head_sha }}
+          VERSION: ${{ needs.pr-publish.outputs.version }}
+          TAG: ${{ needs.pr-publish.outputs.tag }}
+        with:
+          script: |
+            const { PUBLISH_RESULT, PR_NUMBER, HEAD_SHA, VERSION, TAG } = process.env;
+            const issue_number = Number(PR_NUMBER);
+            const comment_id = context.payload.comment.id;
+            const { owner, repo } = context.repo;
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            if (PUBLISH_RESULT === 'success') {
+              const sha = (HEAD_SHA || '').slice(0, 7);
+              const body = [
+                `🚀 Published this PR to npm for testing — built from \`${sha}\`.`,
+                ``,
+                `**Install this exact build:**`,
+                '```sh',
+                `npm install -g homebridge-tuya-plus@${VERSION}`,
+                '```',
+                `**…or follow this PR's tag** (always points at this PR's newest \`/publish\` build):`,
+                '```sh',
+                `npm install -g homebridge-tuya-plus@${TAG}`,
+                '```',
+                ``,
+                `In the Homebridge UI you can also paste \`${VERSION}\` into the plugin's “Install Alternate Version” field.`,
+                ``,
+                `> ℹ️ Prerelease for testing only — **not** tagged \`latest\` or \`dev\`, so it won't reach normal installs.`,
+              ].join('\n');
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+              await github.rest.reactions.createForIssueComment({ owner, repo, comment_id, content: 'rocket' });
+            } else {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number,
+                body: `❌ \`/publish\` did not complete — the build, tests, or publish step failed. See the [run logs](${runUrl}).`,
+              });
+              await github.rest.reactions.createForIssueComment({ owner, repo, comment_id, content: 'confused' });
+            }

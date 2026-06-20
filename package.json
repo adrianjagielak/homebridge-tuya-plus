@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
-    "lint": "eslint index.js lib/**.js bin/**.js"
+    "lint": "eslint index.js lib/**.js bin/**.js",
+    "cleanup:pr-tags": "node scripts/cleanup-pr-tags.js"
   },
   "bin": {
     "tuya-lan": "./bin/cli.js",
