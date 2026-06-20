@@ -492,4 +492,36 @@ describe('IrrigationSystemAccessory — cloud mode (data-points keyed by code)',
         jest.advanceTimersByTime(500);
         expect(device.update).toHaveBeenCalledWith({ zone_b: true });
     });
+
+    test('turning a zone off still writes false when the cloud never echoed the "on"', () => {
+        // The real cloud device never optimistically advances `state`; it only
+        // moves when the realtime stream confirms the device. Emulate that by
+        // making update() a no-op on state. A follow-up "off" must STILL be sent
+        // — otherwise the valve stays open while HomeKit shows it closed (the
+        // exact "can turn on but not off" report).
+        const { accessory, device } = makeHarness(cloudState(), { ...cloudCtx, defaultDuration: 0 });
+        device.update.mockImplementation(() => true); // writes never touch state
+        const v = valve(accessory, 'switch_1');
+
+        v.getCharacteristic(Characteristic.Active).triggerSet(1);
+        jest.advanceTimersByTime(500);
+        expect(device.update).toHaveBeenLastCalledWith({ switch_1: true });
+
+        v.getCharacteristic(Characteristic.Active).triggerSet(0);
+        jest.advanceTimersByTime(500);
+        expect(device.update).toHaveBeenLastCalledWith({ switch_1: false });
+    });
+
+    test('master OFF closes zones the cloud has not echoed as open', () => {
+        const { accessory, device } = makeHarness(cloudState(), { ...cloudCtx, defaultDuration: 0 });
+        device.update.mockImplementation(() => true); // writes never touch state
+
+        valve(accessory, 'switch_1').getCharacteristic(Characteristic.Active).triggerSet(1);
+        valve(accessory, 'switch_2').getCharacteristic(Characteristic.Active).triggerSet(1);
+        jest.advanceTimersByTime(500);
+
+        irrigation(accessory).getCharacteristic(Characteristic.Active).triggerSet(0);
+        jest.advanceTimersByTime(500);
+        expect(device.update).toHaveBeenLastCalledWith({ switch_1: false, switch_2: false });
+    });
 });

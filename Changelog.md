@@ -9,6 +9,8 @@ All notable changes to this project will be documented in this file. This projec
   * Works with both **Custom** and **Smart Home** Cloud projects (the latter via app-account login).
   * The existing **IrrigationSystem** accessory works unchanged over the cloud — its data-points are simply addressed by Tuya "code" (e.g. `switch_1`, `battery_percentage`) instead of a numeric id; the device logs its codes on startup. Battery-only controllers with no rain sensor: set `"noRainSensor": true`.
   * See the wiki: **[Tuya Cloud Setup](https://github.com/adrianjagielak/homebridge-tuya-plus/blob/main/wiki/Tuya-Cloud-Setup.md)**.
+* [*] **Fix realtime (MQTT) cloud updates being silently dropped** — external changes (physical buttons, the Tuya app, the device's own timers) now show up in HomeKit within a second or two. The decryptor was verifying the AES-GCM auth tag (`decipher.final()`), but Tuya's real status frames don't carry a tag that verifies against the documented AAD, so every realtime message was being thrown away. Now decrypts with `update()` only, matching the official `tuya/tuya-homebridge` and `0x5e/homebridge-tuya-platform` implementations.
+* [*] **Fix cloud irrigation valves that could be turned on but not off** — the per-zone write coalescer was dropping any command that matched the last-known `device.state`. Cloud devices never optimistically advance `state` (it only moves once the realtime stream confirms the device), so an "off" issued before the "on" was echoed matched the stale "off" and was discarded — HomeKit showed the zone closed while it kept running. Queued commands are now sent as-is (callers already queue only genuine changes).
 
 ## 2.0.1 (2021-03-25)
 This update includes the following changes:
