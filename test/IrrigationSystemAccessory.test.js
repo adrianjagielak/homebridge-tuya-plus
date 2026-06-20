@@ -154,6 +154,19 @@ describe('IrrigationSystemAccessory — service topology', () => {
         });
     });
 
+    test('adds a ServiceLabel (ARABIC_NUMERALS) so the multi-valve zones group under the system', () => {
+        const { accessory } = makeHarness({ '1': false, '2': false, '3': false, '4': false });
+        const label = accessory.getService(Service.ServiceLabel);
+        expect(label).toBeDefined();
+        expect(label.getCharacteristic(Characteristic.ServiceLabelNamespace).value)
+            .toBe(Characteristic.ServiceLabelNamespace.ARABIC_NUMERALS);
+    });
+
+    test('a single-valve system omits the ServiceLabel (no collection to label)', () => {
+        const { accessory } = makeHarness({ '1': false }, { valveCount: 1 });
+        expect(accessory.getService(Service.ServiceLabel)).toBeUndefined();
+    });
+
     test('IrrigationSystem advertises the required characteristics', () => {
         const { accessory } = makeHarness({ '1': false });
         const irr = irrigation(accessory);
