@@ -71,9 +71,9 @@ This plugin is nevertheless **3.6-ready**: if a device reports a newer protocol 
 
 ## Cloud devices (for hardware that can't be controlled locally)
 
-This is a **LAN-first** plugin — virtually every Tuya device is controlled locally, which is faster, more private, and keeps working without internet. A few devices, though, simply **can't** be reached over the LAN: battery-powered "sleepy" devices — most notably the multi-zone **irrigation / faucet timers** — sleep almost all the time and only ever connect out to Tuya's cloud, so they never answer on the local network (Tuya's own docs confirm LAN control is unavailable for these low-power devices).
+This is a **LAN-first** plugin — virtually every Tuya device is controlled locally, which is faster, more private, and keeps working without internet. A few devices, though, simply **can't** be reached over the LAN: battery-powered "sleepy" devices — for example the **irrigation / faucet timers** — sleep almost all the time and only ever connect out to Tuya's cloud, so they never answer on the local network.
 
-For exactly these cases the plugin can talk to a device through the **Tuya Cloud** instead — strictly **opt-in, per device**. You add your Tuya Cloud project credentials once and set `"cloud": true` on the device; everything else (including the full Irrigation System accessory — all zones, durations, battery) works the same. Live updates arrive instantly over Tuya's MQTT message service.
+For exactly these cases the plugin can talk to a device through the **Tuya Cloud** instead — strictly **opt-in, per device**. You add your Tuya Cloud project credentials once and set `"cloud": true` on the device; everything else works the same.
 
 👉 **[Tuya Cloud Setup guide](https://github.com/adrianjagielak/homebridge-tuya-plus/blob/main/wiki/Tuya-Cloud-Setup.md)** — how to get credentials and configure a cloud device.
 
