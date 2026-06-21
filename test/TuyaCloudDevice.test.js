@@ -127,6 +127,55 @@ describe('TuyaCloudDevice', () => {
         expect(dev.connected).toBe(false);
     });
 
+    test('builds the code<->dp_id map and dual-keys state from the shadow', async () => {
+        const props = [{code: 'switch_1', dp_id: 1, value: false}, {code: 'battery_percentage', dp_id: 46, value: 99}];
+        const api = makeApi();
+        api.getShadowProperties = jest.fn().mockResolvedValue(props);
+        const dev = makeDevice(api);
+        await dev._connect();
+
+        expect(api.getShadowProperties).toHaveBeenCalledWith('dev1');
+        expect(dev.codeByDpId).toEqual({'1': 'switch_1', '46': 'battery_percentage'});
+        expect(dev.dpIdByCode).toEqual({'switch_1': '1', 'battery_percentage': '46'});
+        // state is addressable by BOTH the cloud code and the numeric LAN dp id
+        expect(dev.state).toEqual({switch_1: false, '1': false, battery_percentage: 99, '46': 99});
+    });
+
+    test('update translates a numeric dp id to its cloud code', async () => {
+        const api = makeApi();
+        api.getShadowProperties = jest.fn().mockResolvedValue([{code: 'switch_1', dp_id: 1, value: false}]);
+        const dev = makeDevice(api);
+        await dev._connect();
+
+        dev.update({'1': true}); // a LAN-style numeric write
+        expect(api.sendCommands).toHaveBeenCalledWith('dev1', [{code: 'switch_1', value: true}]);
+    });
+
+    test('realtime code-only deltas are mirrored to numeric ids via the learned map', async () => {
+        const api = makeApi();
+        api.getShadowProperties = jest.fn().mockResolvedValue([{code: 'switch_1', dp_id: 1, value: false}]);
+        const dev = makeDevice(api);
+        await dev._connect();
+
+        const changes = [];
+        dev.on('change', c => changes.push(c));
+        dev._applyStatus([{code: 'switch_1', value: true}]); // code-only (as MQTT delivers)
+        expect(dev.state.switch_1).toBe(true);
+        expect(dev.state['1']).toBe(true);
+        expect(changes[0]).toEqual({switch_1: true, '1': true});
+    });
+
+    test('falls back to /status (code-only) when the shadow is unavailable', async () => {
+        const api = makeApi();
+        api.getShadowProperties = jest.fn().mockResolvedValue(null);
+        const dev = makeDevice(api);
+        await dev._connect();
+
+        expect(dev.codeByDpId).toEqual({});
+        expect(dev.state).toEqual({switch_1: false, battery_percentage: 99}); // code-only, no numeric mirror
+        expect(api.getStatus).toHaveBeenCalledWith('dev1');
+    });
+
     test('subscribes to realtime and re-reads state when the stream (re)connects', async () => {
         const api = makeApi();
         const messaging = Object.assign(new EventEmitter(), {

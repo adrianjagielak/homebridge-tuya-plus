@@ -21,8 +21,8 @@
       },
       "cloud": {
         "type": "object",
-        "title": "Tuya Cloud (optional — only for devices that can't be reached over the LAN)",
-        "description": "This plugin is LAN-first. A few devices — notably battery-powered 'sleepy' irrigation timers — sleep most of the time and only ever talk to Tuya's cloud, so they cannot be controlled locally. Create a free Cloud project at iot.tuya.com, enter its credentials here, then tick 'Control via Tuya Cloud' on each such device. See the wiki for step-by-step setup.",
+        "title": "Tuya Cloud fallback (optional)",
+        "description": "This plugin is LAN-first — every device is controlled locally. Add your Tuya Cloud project credentials here and the plugin keeps one Cloud session running in the background as a transparent fallback for every device: each accessory tries the LAN first, and only falls back to the cloud when it can't be reached locally — a flaky LAN moment, or a battery-powered 'sleepy' device that never appears on the LAN. It's opt-in and local is always preferred. Create a free Cloud project at iot.tuya.com. See the wiki for step-by-step setup.",
         "properties": {
           "accessId": {
             "type": "string",
@@ -197,16 +197,7 @@
             "key": {
               "title": "Tuya Key (local key — required for LAN devices)",
               "type": "string",
-              "description": "The device's local key. Required for normal (LAN) devices. Not needed for cloud devices (tick 'Control via Tuya Cloud' below).",
-              "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices].type !== 'null';"
-              }
-            },
-            "cloud": {
-              "type": ["boolean", "object"],
-              "title": "Control via Tuya Cloud (instead of the LAN)",
-              "default": false,
-              "description": "Enable for devices that can't be reached locally (e.g. battery-powered irrigation timers). Uses the platform-level 'cloud' credentials above. Advanced: instead of a checkbox you can set this to an object with per-device { accessId, accessKey, region, … } to use different credentials for this one device.",
+              "description": "The device's local key. Required for normal (LAN) devices. A device with no key is treated as cloud-only and is reached through the Tuya Cloud session configured above (e.g. a battery-powered 'sleepy' irrigation timer).",
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices].type !== 'null';"
               }
@@ -750,7 +741,7 @@
               "type": "integer",
               "title": "Number of Valves / Zones",
               "placeholder": 4,
-              "description": "How many valves/zones the controller has. They are assumed to be on data-points 1, 2, 3, … (or, for cloud devices, on the codes switch_1, switch_2, …). For non-sequential data-points use the 'valves' list instead.",
+              "description": "How many valves/zones the controller has. They are assumed to be on data-points 1, 2, 3, … (over the cloud these map to the codes switch_1, switch_2, … automatically). For non-sequential data-points use the 'valves' list instead.",
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type);"
               }
