@@ -14,7 +14,7 @@
 
 
 
-A community-maintained Homebridge plugin for controlling Tuya devices in HomeKit. It is **LAN-first**: devices are controlled locally over Tuya's LAN protocol, which is faster, more private, and keeps working without internet. If you add Tuya Cloud credentials, the plugin can also fall back to the cloud for any device the LAN can't reach at that moment — so a device that briefly drops off the network, or one that never appears on the LAN at all, stays controllable. Cloud is optional and opt-in; local is always tried first.
+A community-maintained Homebridge plugin for controlling Tuya devices locally over LAN. Control your supported Tuya accessories locally in HomeKit, with an optional Tuya Cloud fallback for devices the LAN can't reach.
 
 * [Supported Device Types](#supported-device-types)
 * [Supported Tuya Protocol Versions](#supported-tuya-protocol-versions)
@@ -71,15 +71,9 @@ This plugin is nevertheless **3.6-ready**: if a device reports a newer protocol 
 
 ## Cloud fallback (optional)
 
-This plugin is **LAN-first**: every device is controlled locally over Tuya's LAN protocol, which is faster, more private, and works without internet. That stays the default and the preferred path.
+The plugin is LAN-first — everything is controlled locally by default. If you add Tuya Cloud credentials in a top-level `cloud` block, it keeps one cloud session in the background and uses it as a fallback: each device is tried on the LAN first, and only falls back to the cloud when it can't be reached locally — a brief LAN hiccup, or hardware that never appears on the LAN at all (e.g. battery-powered "sleepy" irrigation timers). It's opt-in and local always comes first, and existing configs need no changes — so it's also a handy fix if some devices occasionally show as "No Response".
 
-If you add your Tuya Cloud project credentials once, in a top-level `cloud` block, the plugin keeps a single Tuya Cloud session running in the background and uses it as a **transparent fallback for every device**. Each accessory tries the LAN first, exactly as before; only if the device can't be reached locally — a flaky LAN moment, or hardware that's never on the LAN, such as battery-powered "sleepy" irrigation timers — does it quietly fall back to the cloud. If both fail, HomeKit shows "No Response", as it always has. You don't configure this per device: existing LAN configs and cloud configs both work over either path, because the plugin learns the device's data-point id↔code map from Tuya's device shadow.
-
-This mirrors how the official Tuya / Smart Life app behaves — local when it can, cloud as a backup. We're not aware of another Homebridge Tuya plugin that does LAN-and-cloud fallback this transparently. Cloud stays strictly opt-in: nothing changes unless you add credentials.
-
-If your devices occasionally drop off the LAN and show up as "No Response" in HomeKit, adding cloud credentials is an easy way to smooth that over — local control still runs first, with the cloud there only as a safety net.
-
-👉 **[Tuya Cloud Setup guide](https://github.com/adrianjagielak/homebridge-tuya-plus/blob/main/wiki/Tuya-Cloud-Setup.md)** — how to get credentials and add the `cloud` block.
+See the **[Tuya Cloud Setup guide](https://github.com/adrianjagielak/homebridge-tuya-plus/blob/main/wiki/Tuya-Cloud-Setup.md)** for credentials and setup.
 
 ## Installation Instructions
 
