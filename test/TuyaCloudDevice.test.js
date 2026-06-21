@@ -9,6 +9,7 @@ function makeApi(status = [{code: 'switch_1', value: false}, {code: 'battery_per
     return {
         isConfigured: () => true,
         getStatus: jest.fn().mockResolvedValue(status),
+        getDeviceInfo: jest.fn().mockResolvedValue({online: true}),
         sendCommands: jest.fn().mockResolvedValue(true)
     };
 }
@@ -75,6 +76,34 @@ describe('TuyaCloudDevice', () => {
         changes.length = 0;
         dev._applyStatus([{code: 'switch_1', value: true}]); // nothing changed
         expect(changes).toHaveLength(0);
+    });
+
+    test('connect reflects the device online status (offline → not connected)', async () => {
+        const api = makeApi();
+        api.getDeviceInfo.mockResolvedValue({online: false});
+        const dev = makeDevice(api);
+        await dev._connect();
+        expect(api.getDeviceInfo).toHaveBeenCalledWith('dev1');
+        expect(dev.connected).toBe(false);
+    });
+
+    test('online lookup failure → assume reachable (never block control)', async () => {
+        const api = makeApi();
+        api.getDeviceInfo.mockRejectedValue(new Error('no device-management permission'));
+        const dev = makeDevice(api);
+        await dev._connect();
+        expect(dev.connected).toBe(true);
+    });
+
+    test('a state refresh re-checks online and flips connected', async () => {
+        const api = makeApi();
+        const dev = makeDevice(api);
+        await dev._connect();
+        expect(dev.connected).toBe(true);
+
+        api.getDeviceInfo.mockResolvedValue({online: false});
+        await dev._refreshState();
+        expect(dev.connected).toBe(false);
     });
 
     test('subscribes to realtime and re-reads state when the stream (re)connects', async () => {

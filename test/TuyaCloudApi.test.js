@@ -138,6 +138,14 @@ describe('TuyaCloudApi — endpoints', () => {
         await expect(api.getStatus('dev')).resolves.toEqual([{code: 'switch_1', value: true}]);
     });
 
+    test('getDeviceInfo returns the device record (with online status)', async () => {
+        const api = ready();
+        let path;
+        api._httpsRequest = async (method, p) => { path = p; return {success: true, result: {id: 'dev', online: false, name: 'X'}}; };
+        await expect(api.getDeviceInfo('dev')).resolves.toEqual({id: 'dev', online: false, name: 'X'});
+        expect(path).toBe('/v1.0/devices/dev');
+    });
+
     test('sendCommands posts the commands and reports success', async () => {
         const api = ready();
         let captured;
