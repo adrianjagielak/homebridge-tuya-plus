@@ -1,7 +1,7 @@
 'use strict';
 
 const RGBTWLightAccessory = require('../lib/RGBTWLightAccessory');
-const { makeInstance, makeMockCharacteristic } = require('./support/mocks');
+const { makeInstance, makeMockCharacteristic, HAP } = require('./support/mocks');
 
 function makeLight(state = {}, context = {}) {
     const result = makeInstance(RGBTWLightAccessory, state, { colorFunction: 'HEXHSB', ...context });
@@ -88,12 +88,12 @@ describe('RGBTWLightAccessory.getColorTemperature', () => {
 // setColorTemperature
 // ---------------------------------------------------------------------------
 describe('RGBTWLightAccessory.setColorTemperature', () => {
-    test('does not throw when device is not connected (issue #34)', () => {
+    test('rejects (No Response) and writes nothing when device is not connected', async () => {
         const { instance, device } = makeLight({ '2': 'white', '4': 255 });
         instance.characteristicHue = makeMockCharacteristic(0);
         instance.characteristicSaturation = makeMockCharacteristic(0);
         device.connected = false;
-        expect(() => instance.setColorTemperature(200)).not.toThrow();
+        await expect(instance.setColorTemperature(200)).rejects.toBeInstanceOf(HAP.HapStatusError);
         expect(device.update).not.toHaveBeenCalled();
     });
 

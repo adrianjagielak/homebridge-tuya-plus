@@ -373,11 +373,13 @@ describe('SimpleGarageDoorAccessory.setTargetDoorState — close (stop-before-cl
 // Disconnect handling
 // ---------------------------------------------------------------------------
 describe('SimpleGarageDoorAccessory — disconnected', () => {
-    test('Skips writes when the device is disconnected', () => {
+    test('Surfaces a No Response error and writes nothing when disconnected', () => {
         const { instance, device } = makeSimpleGarage();
         device.connected = false;
 
-        instance.setTargetDoorState(TDS.OPEN);
+        // A tap on an unreachable gate must fail in HomeKit instead of being
+        // silently dropped while HomeKit believes the open/close succeeded.
+        expect(() => instance.setTargetDoorState(TDS.OPEN)).toThrow(HAP.HapStatusError);
 
         expect(device.update).not.toHaveBeenCalled();
     });
