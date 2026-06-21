@@ -15,7 +15,8 @@ If you are looking for verified configurations for your specific device, please 
 |Barely Smart Power Strip|`Outlet`|Smart power strips that don't allow individual control of the outlets|
 |Air Conditioner|`AirConditioner`<sup>[6](#air-conditioners)</sup>|Cooling and heating devices <small>([instructions](#air-conditioners))</small>|
 |Heat Convector|`Convector`<sup>[7](#heat-convectors)</sup>|Heating panels <small>([instructions](#heat-convectors))</small>|
-|WLED Dimmer|`WledDimmer` (or legacy `SimpleDimmer`)<sup>[8](#simple-dimmers)</sup>|Dimmer switches with power control, with optional WLED sync <small>([instructions](#simple-dimmers))</small>|
+|Simple Dimmer|`SimpleDimmer`<sup>[8](#simple-dimmers)</sup>|Dimmer switches with power control <small>([instructions](#simple-dimmers))</small>|
+|WLED Dimmer|`WledDimmer`<sup>[8](#simple-dimmers)</sup>|Dimmer switches with power control, plus optional WLED brightness sync and preset-effect switches <small>([instructions](#simple-dimmers))</small>|
 |Simple Heater|`SimpleHeater`<sup>[9](#simple-heaters)</sup>|Heating solutions with only temperature control <small>([instructions](#simple-heaters))</small>|
 |Garage Door|`GarageDoor`<sup>[10](#garage-doors)</sup>|Smart garage doors or garage door openers <small>([instructions](#garage-doors))</small>|
 |Simple Garage Door|`SimpleGarageDoor`<sup>[10](#simple-garage-doors)</sup>|Sliding gate openers and garage door controllers with open/stop/close action DPs and a simple three-value status DP <small>([instructions](#simple-garage-doors))</small>|
@@ -345,14 +346,15 @@ If your signature doesn't have a variation of _low_ or _high_, `SimpleHeater` wo
 ```
 
 ### Simple Dimmers / WLED Dimmers
-These are switches that allow turning on and off, and dimming. Use type `WledDimmer` (legacy `SimpleDimmer` alias is also supported for backward compatibility).
+These are switches that allow turning on and off, and dimming. Two distinct types are available:
 
-When using with a WLED controller (e.g. a Tuya-based relay/dimmer feeding power to a WLED strip), you can use advanced sync options:
+- `SimpleDimmer` — a plain dimmer with power and brightness control.
+- `WledDimmer` — a dimmer that can additionally drive a [WLED](https://kno.wled.ge/) controller (e.g. a Tuya-based relay/dimmer feeding power to a WLED strip). With none of the WLED options below configured, it behaves exactly like a `SimpleDimmer`.
 
-- `syncBrightnessToWled`: set to WLED device IP (e.g. "192.168.1.50" or "192.168.1.50:80") to sync HomeKit brightness changes directly to WLED over HTTP, keeping the Tuya dimmer at 100%.
+The following options apply to `WledDimmer` only (they are ignored by `SimpleDimmer`):
+
+- `syncBrightnessToWled`: set to the WLED device IP (e.g. "192.168.1.50" or "192.168.1.50:80") to sync HomeKit brightness changes directly to WLED over HTTP, keeping the Tuya dimmer at 100%.
 - `presetEffects`: array of effect configs to expose as switches in HomeKit (each turns on a WLED fx preset, optionally with staticColor).
-
-See the accessory source for full details on WLED integration.
 
 ```json5
 {
