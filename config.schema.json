@@ -318,7 +318,7 @@
               "title": "Sync brightness to WLED (IP[:port])",
               "placeholder": "192.168.1.100",
               "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices] && ['WledDimmer', 'SimpleDimmer'].includes(model.devices[arrayIndices].type);"
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['WledDimmer'].includes(model.devices[arrayIndices].type);"
               }
             },            
             "dpColorTemperature": {

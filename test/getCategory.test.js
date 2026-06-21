@@ -23,6 +23,7 @@ const CLASS_DEF = {
     garagedoor: require('../lib/GarageDoorAccessory'),
     simplegaragedoor: require('../lib/SimpleGarageDoorAccessory'),
     simpledimmer: require('../lib/SimpleDimmerAccessory'),
+    wleddimmer: require('../lib/WledDimmerAccessory'),
     simpledimmer2: require('../lib/SimpleDimmer2Accessory'),
     simpleblinds: require('../lib/SimpleBlindsAccessory'),
     simpleheater: require('../lib/SimpleHeaterAccessory'),
