@@ -125,8 +125,8 @@ describe('IrrigationSystemAccessory — category', () => {
 });
 
 describe('IrrigationSystemAccessory — service topology', () => {
-    test('builds an IrrigationSystem (primary) + 4 linked valves + battery + contact sensor by default', () => {
-        const { accessory } = makeHarness({ '1': false, '2': false, '3': false, '4': false, '46': 80, '49': 'no_rain' });
+    test('builds an IrrigationSystem (primary) + 4 linked valves + battery by default', () => {
+        const { accessory } = makeHarness({ '1': false, '2': false, '3': false, '4': false, '46': 80 });
 
         const irr = irrigation(accessory);
         expect(irr).toBeDefined();
@@ -138,9 +138,9 @@ describe('IrrigationSystemAccessory — service topology', () => {
         // All four valves are linked to the irrigation system.
         expect(irr.linked).toHaveLength(4);
 
-        // Battery + ContactSensor present; LeakSensor absent.
+        // Battery present; no rain/leak sensor is ever created.
         expect(accessory.getService(Service.Battery)).toBeDefined();
-        expect(accessory.getService(Service.ContactSensor)).toBeDefined();
+        expect(accessory.getService(Service.ContactSensor)).toBeUndefined();
         expect(accessory.getService(Service.LeakSensor)).toBeUndefined();
     });
 
@@ -162,17 +162,23 @@ describe('IrrigationSystemAccessory — service topology', () => {
         expect(irr.getCharacteristic(Characteristic.InUse).value).toBe(Characteristic.InUse.NOT_IN_USE);
     });
 
-    test('noBattery / noRainSensor omit those services', () => {
-        const { accessory } = makeHarness({ '1': false }, { noBattery: true, noRainSensor: true });
+    test('noBattery omits the battery service', () => {
+        const { accessory } = makeHarness({ '1': false }, { noBattery: true });
         expect(accessory.getService(Service.Battery)).toBeUndefined();
-        expect(accessory.getService(Service.ContactSensor)).toBeUndefined();
-        expect(accessory.getService(Service.LeakSensor)).toBeUndefined();
     });
 
-    test('rainSensorType "leak" uses a LeakSensor instead of a ContactSensor', () => {
-        const { accessory } = makeHarness({ '49': 'rain' }, { rainSensorType: 'leak' });
-        expect(accessory.getService(Service.LeakSensor)).toBeDefined();
+    test('removes a stale rain sensor service left over from an older version', () => {
+        const { instance, accessory } = makeHarness({ '1': false });
+        // An accessory cached by an older plugin version may still carry the
+        // ContactSensor/LeakSensor; reconciliation must drop it so the sprinkler
+        // stays a clean, single-category tile.
+        accessory.addService(Service.ContactSensor, 'Old Rain');
+        accessory.addService(Service.LeakSensor, 'Old Leak');
+
+        instance._verifyCachedPlatformAccessory();
+
         expect(accessory.getService(Service.ContactSensor)).toBeUndefined();
+        expect(accessory.getService(Service.LeakSensor)).toBeUndefined();
     });
 });
 
@@ -361,16 +367,13 @@ describe('IrrigationSystemAccessory — device-side change reflection', () => {
         expect(v.getCharacteristic(Characteristic.RemainingDuration).value).toBe(600);
     });
 
-    test('battery + rain telemetry updates the corresponding characteristics', () => {
-        const { accessory, device } = makeHarness({ '46': 80, '49': 'no_rain' });
-        device.emitChange({ '46': 10, '49': 'rain' });
+    test('battery telemetry updates the corresponding characteristics', () => {
+        const { accessory, device } = makeHarness({ '46': 80 });
+        device.emitChange({ '46': 10 });
 
         const battery = accessory.getService(Service.Battery);
         expect(battery.getCharacteristic(Characteristic.BatteryLevel).value).toBe(10);
         expect(battery.getCharacteristic(Characteristic.StatusLowBattery).value).toBe(Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
-
-        const contact = accessory.getService(Service.ContactSensor);
-        expect(contact.getCharacteristic(Characteristic.ContactSensorState).value).toBe(Characteristic.ContactSensorState.CONTACT_NOT_DETECTED);
     });
 });
 
@@ -425,32 +428,11 @@ describe('IrrigationSystemAccessory — charging state', () => {
     });
 });
 
-describe('IrrigationSystemAccessory — rain mapping', () => {
-    test('contact sensor: rain → NOT_DETECTED, no_rain → DETECTED', () => {
-        const { instance } = makeHarness();
-        expect(instance._contactState('rain')).toBe(Characteristic.ContactSensorState.CONTACT_NOT_DETECTED);
-        expect(instance._contactState('no_rain')).toBe(Characteristic.ContactSensorState.CONTACT_DETECTED);
-    });
-
-    test('rainInverted flips the polarity', () => {
-        const { instance } = makeHarness({}, { rainInverted: true });
-        expect(instance._contactState('rain')).toBe(Characteristic.ContactSensorState.CONTACT_DETECTED);
-        expect(instance._contactState('no_rain')).toBe(Characteristic.ContactSensorState.CONTACT_NOT_DETECTED);
-    });
-
-    test('leak sensor maps rain → detected', () => {
-        const { instance } = makeHarness({}, { rainSensorType: 'leak' });
-        expect(instance._rainDetected('rain')).toBe(true);
-        expect(instance._rainDetected('no_rain')).toBe(false);
-    });
-});
-
 describe('IrrigationSystemAccessory — cloud mode (data-points keyed by code)', () => {
     // Mirrors a real Tuya "sfkzq" watering controller reached over the cloud:
-    // valves are switch_1..4, battery is battery_percentage, and there is no
-    // rain sensor.
+    // valves are switch_1..4 and battery is battery_percentage.
     const cloudState = () => ({ switch_1: false, switch_2: false, switch_3: false, switch_4: false, battery_percentage: 99 });
-    const cloudCtx = { cloud: true, noRainSensor: true };
+    const cloudCtx = { cloud: true };
 
     beforeEach(() => jest.useFakeTimers());
     afterEach(() => { jest.clearAllTimers(); jest.useRealTimers(); });
@@ -485,7 +467,7 @@ describe('IrrigationSystemAccessory — cloud mode (data-points keyed by code)',
     test('an explicit valve list may use custom codes', () => {
         const { accessory, device } = makeHarness(
             { zone_a: false, zone_b: false, battery_percentage: 50 },
-            { cloud: true, noRainSensor: true, valves: [{ name: 'A', dp: 'zone_a' }, { name: 'B', dp: 'zone_b' }] }
+            { cloud: true, valves: [{ name: 'A', dp: 'zone_a' }, { name: 'B', dp: 'zone_b' }] }
         );
         expect(valve(accessory, 'zone_a')).toBeTruthy();
         valve(accessory, 'zone_b').getCharacteristic(Characteristic.Active).triggerSet(1);
