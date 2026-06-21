@@ -132,8 +132,8 @@ The realtime stream connects out to Tuya's broker on **port 8883** — make sure
 
 | Symptom | Cause / fix |
 |---|---|
-| `failed to connect to Tuya Cloud: token request failed … (code 1004)` | Wrong **Access ID/Secret**, or host clock skew — the signature includes a timestamp, so keep the machine **NTP-synced**. |
-| `… (code 1106) permission deny` / `No permissions` | API service not authorized or **trial expired** (step 2), or **wrong region**, or you logged in with the developer account instead of the **app** account. |
+| `Tuya Cloud connection failed: token request failed … (code 1004)` | Wrong **Access ID/Secret**, or host clock skew — the signature includes a timestamp, so keep the machine **NTP-synced**. |
+| `… (code 1106) permission deny` / `(code 40001900) No space permission` | API service not authorized or **trial expired** (step 2), or **wrong region**, or you logged in with the developer account instead of the **app** account, or this specific device isn't linked to the project (step 3). The cloud backs every device as a fallback, so a single LAN-only device that isn't in the project logs this once — harmless if that device already works over the LAN. |
 | Device connects but shows nothing / `0` devices | **Region mismatch**, or the device isn't linked to the project (step 3), or the linked account isn't the device's **owner** (shared/guest access hides devices). |
 | `realtime disabled: the optional "mqtt" package is not installed` | Install `mqtt` (above), or ignore if you don't need live external updates. |
 | Realtime never connects (control works, external changes don't) | Outbound **port 8883** blocked by a firewall. |
