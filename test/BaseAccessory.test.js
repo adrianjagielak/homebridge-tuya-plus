@@ -1,7 +1,7 @@
 'use strict';
 
 const BaseAccessory = require('../lib/BaseAccessory');
-const { makeInstance } = require('./support/mocks');
+const { makeInstance, HAP } = require('./support/mocks');
 
 // Minimal concrete subclass — BaseAccessory itself doesn't define _registerCharacteristics
 class TestAccessory extends BaseAccessory {
@@ -158,10 +158,13 @@ describe('getStateAsync', () => {
         expect(instance.getStateAsync(['1', '2'])).toEqual({ '1': true, '2': 50 });
     });
 
-    test('throws when device is not connected', () => {
+    test('throws a comm-failure HapStatusError when device is not connected', () => {
         const { instance, device } = make();
         device.connected = false;
-        expect(() => instance.getStateAsync('1')).toThrow('Not connected');
+        let err;
+        try { instance.getStateAsync('1'); } catch (e) { err = e; }
+        expect(err).toBeInstanceOf(HAP.HapStatusError);
+        expect(err.hapStatus).toBe(HAP.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
     });
 });
 
@@ -231,9 +234,12 @@ describe('getDividedStateAsync', () => {
         expect(instance.getDividedStateAsync('5', 10)).toBeCloseTo(220);
     });
 
-    test('throws when state value is not finite', () => {
+    test('throws a comm-failure HapStatusError when state value is not finite', () => {
         const { instance } = make({ '5': 'bad' });
-        expect(() => instance.getDividedStateAsync('5', 10)).toThrow();
+        let err;
+        try { instance.getDividedStateAsync('5', 10); } catch (e) { err = e; }
+        expect(err).toBeInstanceOf(HAP.HapStatusError);
+        expect(err.hapStatus).toBe(HAP.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
     });
 });
 

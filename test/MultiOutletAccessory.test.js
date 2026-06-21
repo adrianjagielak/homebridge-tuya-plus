@@ -1,7 +1,7 @@
 'use strict';
 
 const MultiOutletAccessory = require('../lib/MultiOutletAccessory');
-const { makeInstance } = require('./support/mocks');
+const { makeInstance, HAP } = require('./support/mocks');
 
 function makeOutlet(state = {}) {
     return makeInstance(MultiOutletAccessory, state);
@@ -14,10 +14,13 @@ describe('MultiOutletAccessory.getPower', () => {
         expect(instance.getPower('2')).toBe(false);
     });
 
-    test('throws when device is disconnected', () => {
+    test('throws a comm-failure HapStatusError when device is disconnected', () => {
         const { instance, device } = makeOutlet();
         device.connected = false;
-        expect(() => instance.getPower('1')).toThrow('Not connected');
+        let err;
+        try { instance.getPower('1'); } catch (e) { err = e; }
+        expect(err).toBeInstanceOf(HAP.HapStatusError);
+        expect(err.hapStatus).toBe(HAP.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
     });
 });
 
