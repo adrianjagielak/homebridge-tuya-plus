@@ -1,10 +1,12 @@
 # Tuya Cloud Setup
 
-This plugin is **LAN-first** — almost every Tuya device is controlled locally. But a few devices **cannot** be reached over the LAN at all:
+This plugin is **LAN-first** — every Tuya device is controlled locally whenever it can be. Adding your Tuya Cloud credentials turns the cloud into a **transparent fallback for every device**: each accessory tries the LAN first, and only falls back to the cloud when the device can't be reached locally. It's **opt-in** (nothing happens unless you add credentials) and **local stays the preferred path**.
 
-> Battery-powered **"sleepy"** devices — most notably multi-zone **irrigation / faucet timers** — sleep almost all the time to save battery and only ever connect *outbound* to Tuya's cloud (over MQTT) for a brief moment when they wake. They never keep the local port open and never answer LAN discovery, so the local protocol can't reach them. (Tuya's own developer docs state LAN control is unavailable in low-power mode.)
+It helps in two situations:
 
-For these devices the plugin can talk to the **Tuya Cloud** instead. It is **opt-in, per device** — your other devices stay 100% local.
+> **Devices that are never on the LAN.** Battery-powered **"sleepy"** devices — most notably multi-zone **irrigation / faucet timers** — sleep almost all the time to save battery and only ever connect *outbound* to Tuya's cloud (over MQTT) for a brief moment when they wake. They never keep the local port open and never answer LAN discovery, so the local protocol can't reach them. (Tuya's own developer docs state LAN control is unavailable in low-power mode.)
+
+> **Devices that occasionally drop off the LAN.** If a normally-local device sometimes shows "No Response" in HomeKit, the cloud fallback quietly covers those moments — local control still runs first.
 
 * Initial state + control go through the Tuya OpenAPI (signed HTTPS).
 * Live updates (including physical button presses) arrive over Tuya's **MQTT** message service — no polling.
@@ -42,7 +44,9 @@ Still in the project: **Devices → Link App Account → Add App Account**, then
 
 ## 5. Configure the plugin
 
-Add a **top-level `cloud` block** with your credentials, and set **`"cloud": true`** on the device. There are two project styles:
+Add a **top-level `cloud` block** with your credentials. That's all the global fallback needs — every device then tries the LAN first and uses the cloud as a backup.
+
+For a device that is **never** reachable on the LAN (a battery-powered "sleepy" timer), also set **`"cloud": true`** on it, so it's controlled cloud-first and doesn't wait on LAN discovery. There are two project styles:
 
 ### Smart Home project (recommended — what most people have)
 
@@ -84,9 +88,11 @@ If you created a **Custom** project (devices linked by QR to the project's asset
 }
 ```
 
-### Per-device credentials (optional)
+### Per-device credentials (deprecated)
 
-Instead of (or in addition to) the platform block, a device can carry its own credentials — handy if different devices live in different Tuya projects:
+The plugin now runs a **single** Cloud session for the whole platform, so per-device credentials are deprecated. For backward compatibility, if there's no top-level `cloud` block the plugin adopts the first device's credentials as the global session — but you should move them to a top-level `cloud` block. (Several different Tuya accounts in one Homebridge instance are no longer supported.)
+
+Older form, still accepted:
 
 ```json5
 {
@@ -108,12 +114,14 @@ Instead of (or in addition to) the platform block, a device can carry its own cr
 
 ---
 
-## Data-points are addressed by "code" on the cloud
+## Data-points: numbers on the LAN, codes on the cloud
 
-Over the LAN, data-points are numbered (1, 2, …). Over the **cloud** they're named **codes** (e.g. `switch_1`, `battery_percentage`). When a cloud device connects, the plugin **logs the exact codes** it reports, e.g.:
+Over the LAN, data-points are numbered (1, 2, …). Over the **cloud** they're named **codes** (e.g. `switch_1`, `battery_percentage`). You normally don't need to care which is which: when the cloud session connects, the plugin reads the device's *thing shadow*, which lists both the code **and** the numeric id for each data-point, and learns the mapping. From then on a configuration written either way works over either transport — a numeric-DP config falls back to the cloud, and a code-based config works on the LAN.
+
+When a cloud device connects, the plugin **logs the data-points** it reports (code and numeric id), e.g.:
 
 ```
-Garden Irrigation: Tuya Cloud data-point codes → switch_1=false, switch_2=false, switch_3=false, switch_4=false, countdown_1=0, …, battery_percentage=99
+Garden Irrigation: Tuya Cloud data-points → switch_1(dp 1)=false, switch_2(dp 2)=false, switch_3(dp 3)=false, switch_4(dp 4)=false, countdown_1(dp 5)=0, …, battery_percentage(dp 46)=99
 ```
 
 The `IrrigationSystem` defaults already match the common 4-zone layout (`switch_1`…`switch_4`, battery `battery_percentage`). If your device differs, use the logged codes:

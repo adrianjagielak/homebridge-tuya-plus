@@ -138,6 +138,23 @@ describe('TuyaCloudApi — endpoints', () => {
         await expect(api.getStatus('dev')).resolves.toEqual([{code: 'switch_1', value: true}]);
     });
 
+    test('getShadowProperties returns the properties array (code + dp_id)', async () => {
+        const api = ready();
+        let path;
+        api._httpsRequest = async (method, p) => {
+            path = p;
+            return {success: true, result: {properties: [{code: 'switch_led', dp_id: 20, value: true}]}};
+        };
+        await expect(api.getShadowProperties('dev')).resolves.toEqual([{code: 'switch_led', dp_id: 20, value: true}]);
+        expect(path).toBe('/v2.0/cloud/thing/dev/shadow/properties');
+    });
+
+    test('getShadowProperties returns null (never throws) when the shadow API is unavailable', async () => {
+        const api = ready();
+        api._httpsRequest = async () => ({success: false, code: 1106, msg: 'permission deny'});
+        await expect(api.getShadowProperties('dev')).resolves.toBeNull();
+    });
+
     test('getDeviceInfo returns the device record (with online status)', async () => {
         const api = ready();
         let path;

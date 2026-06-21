@@ -21,8 +21,8 @@
       },
       "cloud": {
         "type": "object",
-        "title": "Tuya Cloud (optional — only for devices that can't be reached over the LAN)",
-        "description": "This plugin is LAN-first. A few devices — notably battery-powered 'sleepy' irrigation timers — sleep most of the time and only ever talk to Tuya's cloud, so they cannot be controlled locally. Create a free Cloud project at iot.tuya.com, enter its credentials here, then tick 'Control via Tuya Cloud' on each such device. See the wiki for step-by-step setup.",
+        "title": "Tuya Cloud fallback (optional)",
+        "description": "This plugin is LAN-first — every device is controlled locally. Add your Tuya Cloud project credentials here and the plugin keeps one Cloud session running in the background as a transparent fallback for every device: each accessory tries the LAN first, and only falls back to the cloud when it can't be reached locally — a flaky LAN moment, or a battery-powered 'sleepy' device that never appears on the LAN. It's opt-in and local is always preferred. Create a free Cloud project at iot.tuya.com. See the wiki for step-by-step setup.",
         "properties": {
           "accessId": {
             "type": "string",
@@ -75,6 +75,12 @@
             "title": "Realtime updates (MQTT)",
             "default": true,
             "description": "Receive instant updates over Tuya's MQTT message service (uses the 'mqtt' package, installed automatically). If disabled, devices stay controllable and show their state at startup, but external changes (physical buttons, the device's own timers) won't be reflected until restart."
+          },
+          "fallback": {
+            "type": "boolean",
+            "title": "Use the cloud as a fallback for every device",
+            "default": true,
+            "description": "On by default: with credentials set, every device automatically falls back to the cloud when it can't be reached on the LAN. Turn this off to limit cloud use to only the devices you explicitly tick 'Control via Tuya Cloud' below (the older opt-in-per-device behavior)."
           }
         }
       },
@@ -204,9 +210,9 @@
             },
             "cloud": {
               "type": ["boolean", "object"],
-              "title": "Control via Tuya Cloud (instead of the LAN)",
+              "title": "Control via Tuya Cloud (cloud-first for this device)",
               "default": false,
-              "description": "Enable for devices that can't be reached locally (e.g. battery-powered irrigation timers). Uses the platform-level 'cloud' credentials above. Advanced: instead of a checkbox you can set this to an object with per-device { accessId, accessKey, region, … } to use different credentials for this one device.",
+              "description": "Leave unticked for normal devices — with cloud credentials set above, they already fall back to the cloud automatically when the LAN can't reach them. Tick this only for hardware that is never on the LAN (e.g. a battery-powered 'sleepy' irrigation timer): it's then controlled over the cloud first and skips LAN discovery. (To keep a device strictly local and never use the cloud, set this to false.) Advanced/legacy: an object with { accessId, accessKey, region, … } is still accepted, but a single top-level 'cloud' block is now preferred.",
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices].type !== 'null';"
               }
