@@ -223,7 +223,17 @@ Some smart power strips don't have sequential data-points. Using `CustomMultiOut
 ```
 
 ### Air Conditioners
-These devices have cooling and/or heating capabilities; they could also have _dry_, _fan_, or others modes but HomeKit's definition doesn't facilitate modes other than _heat_, _cool_, and _auto_. By default, _heat_ and _cool_ modes are enabled; to let the plugin know that a device doesn't have heating or cooling capabilities, add an additional parameter named `noHeat` or `noCool` and set it to `true`. Tuya devices don't follow a unified pattern for naming the modes, for example cooling mode is called _COOL_ on Kogan's KAPRA14WFGA and _cold_ on Igenix's IG9901WIFI; by default, the plugin uses the phrases _COOL_ and _HEAT_ while communicating with your device but to let the plugin know that a device has different phrases, add additional parameters using `cmdHeat` and `cmdCool`. Additional parameters can be found in the sample below.
+These devices have cooling and/or heating capabilities; they could also have _dry_, _fan_, or others modes but HomeKit's definition doesn't facilitate modes other than _heat_, _cool_, and _auto_. By default, _heat_, _cool_ and _auto_ modes are enabled; to let the plugin know that a device doesn't have heating, cooling or auto capabilities, add an additional parameter named `noHeat`, `noCool` or `noAuto` and set it to `true`.
+
+Tuya devices don't follow a unified pattern for naming the modes, for example cooling mode is called _COOL_ on Kogan's KAPRA14WFGA but _cold_ on Igenix's IG9901WIFI and most "standard" Tuya AC (category `kt`) firmwares. The phrases are also **case-sensitive**. By default, the plugin uses the phrases _COOL_, _HEAT_ and _AUTO_ while communicating with your device; if your device uses different phrases (a very common case — many ACs report lowercase `cold` / `hot` / `auto` / `wet` / `wind`), override them with `cmdCool`, `cmdHeat` and `cmdAuto`. If the modes don't switch at all, this is almost always the reason.
+
+> **Tip — finding the exact phrases.** The phrases are the raw values of the `mode` data-point (DP `4`). You can read them from the [Tuya IoT Platform](https://iot.tuya.com) → _Cloud → API Explorer → Query Things Data Model_ (or _Get Device Specification_) for your device. For example, a device whose `mode` enum range is `["auto","cold","wet","wind","hot"]` needs `cmdCool: "cold"`, `cmdHeat: "hot"`, `cmdAuto: "auto"`.
+
+The fan speed data-point (DP `5`, `windspeed`) is usually an **enum of string values** like `"1"`, `"2"`, `"3"`. Set `fanSpeedSteps` to the number of speeds (e.g. `3`); this both maps HomeKit's 0–100 % slider onto the right number of steps and — importantly — sends the speed as a string, which these firmwares require. Without it the fan may silently ignore speed changes.
+
+Many ACs have no child-lock data-point; if yours doesn't, set `noChildLock: true` so the plugin doesn't add a (non-functional) lock control. Likewise, set `noRotationSpeed: true` if the device has no fan-speed control.
+
+Additional parameters can be found in the sample below.
 
 ```json5
 {
@@ -242,11 +252,26 @@ These devices have cooling and/or heating capabilities; they could also have _dr
     /* This device has no heating function */
     "noHeat": true ,
 
-    /* Override cooling phrase */
+    /* This device has no auto function */
+    "noAuto": true,
+
+    /* Override cooling phrase (case-sensitive; e.g. "cold" on many devices) */
     "cmdCool": "COOL",
 
-    /* Override heating phrase */
+    /* Override heating phrase (case-sensitive; e.g. "hot" on many devices) */
     "cmdHeat": "HEAT",
+
+    /* Override auto phrase (case-sensitive; e.g. "auto" on many devices) */
+    "cmdAuto": "AUTO",
+
+    /* Number of fan speeds; also sends the speed as a string (required by most ACs) */
+    "fanSpeedSteps": 3,
+
+    /* This device has no fan-speed control */
+    "noRotationSpeed": true,
+
+    /* This device has no child-lock data-point */
+    "noChildLock": true,
 
     /* This device has no oscillation (swinging) function */
     "noSwing": true,
@@ -258,7 +283,10 @@ These devices have cooling and/or heating capabilities; they could also have _dr
     "maxTemperature": 40,
 
     /* Temperature change steps, in Celsius (°C) */
-    "minTemperatureSteps": 1
+    "minTemperatureSteps": 1,
+
+    /* Only if your firmware reports/accepts temperatures scaled by 10 (e.g. 170 = 17.0 °C) */
+    "temperatureDivisor": 10
 }
 ```
 
