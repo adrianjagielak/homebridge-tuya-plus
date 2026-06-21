@@ -96,10 +96,6 @@ When adding or changing a device type, follow the existing pattern:
 This is the most important rule in this repo. Users have working setups and
 devices already paired in HomeKit; a careless change can break them silently.
 
-- **Never change HomeKit accessory identity.** Accessory UUIDs are derived from
-  `UUID_SEED = 'homebridge-tuya'` in `index.js`. Changing the seed or the
-  generation scheme re-pairs every device, wiping users' names, rooms, and
-  automations. There is a dedicated `uuidStability` test guarding this.
 - **Config is a public API.** Don't rename, repurpose, or remove existing config
   keys (platform- or device-level). Add new options as optional with safe
   defaults, and keep `config.schema.json` in sync. Be lenient in what you
@@ -110,8 +106,7 @@ devices already paired in HomeKit; a careless change can break them silently.
 - **Preserve protocol support.** The plugin speaks Tuya LAN 3.1-3.5 and is
   forward-compatible with newer versions; don't drop versions or break version
   routing.
-- When a change must alter behavior, prefer making it opt-in, and document it in
-  the `## Unreleased` section of `Changelog.md`.
+- When a change must alter behavior, make it opt-in.
 
 ## Git & PR workflow
 
@@ -119,10 +114,7 @@ devices already paired in HomeKit; a careless change can break them silently.
 - `main` is protected and merges via squash; each commit there is auto-published
   to npm under the `dev` tag, so keep `main` releasable.
 - Match the existing commit style: a concise, imperative subject (the PR number
-  is appended on squash, e.g. `... (#62)`), followed by a body that explains the
-  *why* when it isn't obvious.
-- Update `Changelog.md` (`## Unreleased`) and `config.schema.json` when your
-  change is user-visible.
-- Do **not** open a pull request unless explicitly asked.
+  is appended automatically on merge, e.g. `... (#62)`).
+
 </content>
 </invoke>
