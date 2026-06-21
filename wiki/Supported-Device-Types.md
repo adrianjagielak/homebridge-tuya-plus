@@ -500,9 +500,10 @@ external stop, where close is accepted immediately), a close is sent as
     /* Optional. If set, exposes an extra stateful switch that mirrors
        whether the gate is currently open in HomeKit's view. Tapping it
        ON triggers a partial-open: the gate opens and then stops itself
-       this many milliseconds later, leaving the gate partially open.
-       Tapping it OFF triggers a standard full close. Useful for letting
-       someone pass through briefly. Leave unset to skip the switch. */
+       this many milliseconds after it actually starts moving, leaving the
+       gate partially open. Tapping it OFF triggers a standard full close.
+       Useful for letting someone pass through briefly. Leave unset to skip
+       the switch. */
     "partialOpenMs": 2000,
 
     /* Optional. Exposes extra Force Open and Force Close momentary

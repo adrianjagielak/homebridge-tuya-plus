@@ -52,6 +52,8 @@ function makeSimpleGarage(initialContext = {}) {
     instance.stopBeforeCloseMs = 1500;
     instance.partialStopTimer = null;
     instance.pendingCloseTimer = null;
+    instance.partialPending = false;
+    instance.partialGeneration = 0;
     instance.currentDoorState = CDS.CLOSED;
     instance.characteristicCurrentDoorState = {
         value: CDS.CLOSED,
@@ -409,35 +411,71 @@ describe('SimpleGarageDoorAccessory._handlePartialOpen', () => {
     beforeEach(() => jest.useFakeTimers());
     afterEach(() => jest.useRealTimers());
 
-    test('Fires open, then fires stop after partialOpenMs', () => {
+    test('Stop is anchored to the gate reporting it is moving, not the button press', () => {
         const { instance, device } = makeSimpleGarage();
         instance.partialOpenMs = 2000;
+        // Gate starts closed, so the open command needs time to reach it and
+        // get the gate moving before a stop can do anything.
+        device.state['105'] = STATE_CLOSING_OR_CLOSED;
 
         instance._handlePartialOpen();
 
-        // Open goes out immediately.
+        // Open goes out immediately, but the auto-stop is NOT armed yet.
         expect(device.update).toHaveBeenCalledTimes(1);
         expect(device.update).toHaveBeenNthCalledWith(1, { '101': true });
         expect(instance.characteristicTargetDoorState.value).toBe(TDS.OPEN);
+        expect(instance.partialStopTimer).toBeNull();
+        expect(instance.partialPending).toBe(true);
 
-        // Nothing happens until the timer elapses.
+        // No amount of waiting fires a stop until the gate reports it's moving —
+        // this is what stops a too-early stop from being a dropped no-op.
+        jest.advanceTimersByTime(10_000);
+        expect(device.update).toHaveBeenCalledTimes(1);
+
+        // Controller reports it has started opening: now the countdown arms.
+        emitState(device, STATE_OPENING_OR_OPEN);
+        expect(instance.partialStopTimer).not.toBeNull();
+        expect(instance.partialPending).toBe(false);
+
         jest.advanceTimersByTime(2000 - 1);
         expect(device.update).toHaveBeenCalledTimes(1);
 
-        // Then a single stop is fired.
+        // The stop fires, and is re-sent a couple of times to survive a dropped
+        // write (the controller occasionally drops a lone command).
         jest.advanceTimersByTime(1);
         expect(device.update).toHaveBeenCalledTimes(2);
         expect(device.update).toHaveBeenNthCalledWith(2, { '103': true });
+        jest.advanceTimersByTime(300);
+        expect(device.update).toHaveBeenNthCalledWith(3, { '103': true });
+        jest.advanceTimersByTime(300);
+        expect(device.update).toHaveBeenNthCalledWith(4, { '103': true });
 
-        // And nothing more after that.
+        // And nothing more after the re-sends.
         jest.advanceTimersByTime(10_000);
-        expect(device.update).toHaveBeenCalledTimes(2);
+        expect(device.update).toHaveBeenCalledTimes(4);
         expect(instance.partialStopTimer).toBeNull();
     });
 
-    test('Re-entrant press while armed is ignored (idempotent)', () => {
+    test('Arms straight away when the gate already reports open/opening', () => {
         const { instance, device } = makeSimpleGarage();
         instance.partialOpenMs = 2000;
+        device.state['105'] = STATE_OPENING_OR_OPEN;
+
+        instance._handlePartialOpen();
+
+        // Open fired and the countdown armed without waiting for a fresh report.
+        expect(device.update).toHaveBeenNthCalledWith(1, { '101': true });
+        expect(instance.partialStopTimer).not.toBeNull();
+        expect(instance.partialPending).toBe(false);
+
+        jest.advanceTimersByTime(2000);
+        expect(device.update).toHaveBeenNthCalledWith(2, { '103': true });
+    });
+
+    test('Re-entrant press while in progress is ignored (idempotent)', () => {
+        const { instance, device } = makeSimpleGarage();
+        instance.partialOpenMs = 2000;
+        device.state['105'] = STATE_OPENING_OR_OPEN; // arms immediately
 
         instance._handlePartialOpen();
         expect(device.update).toHaveBeenCalledTimes(1);
@@ -452,6 +490,20 @@ describe('SimpleGarageDoorAccessory._handlePartialOpen', () => {
         expect(device.update).toHaveBeenCalledTimes(1);
         jest.advanceTimersByTime(1);
         expect(device.update).toHaveBeenNthCalledWith(2, { '103': true });
+    });
+
+    test('Re-entrant press while waiting for movement is ignored', () => {
+        const { instance, device } = makeSimpleGarage();
+        instance.partialOpenMs = 2000;
+        device.state['105'] = STATE_CLOSING_OR_CLOSED;
+
+        instance._handlePartialOpen();
+        expect(device.update).toHaveBeenCalledTimes(1); // open
+        expect(instance.partialPending).toBe(true);
+
+        // A second press before the gate reports moving must not fire another open.
+        instance._handlePartialOpen();
+        expect(device.update).toHaveBeenCalledTimes(1);
     });
 
     test('A direct close cancels the partial auto-stop and runs stop-before-close', () => {
