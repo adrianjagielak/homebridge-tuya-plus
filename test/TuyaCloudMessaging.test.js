@@ -56,6 +56,30 @@ describe('TuyaCloudMessaging — decryption + dispatch', () => {
         expect(received[0]).toEqual([{code: 'switch_1', value: true, t}, {code: 'battery_percentage', value: 80, t}]);
     });
 
+    test('decrypts a GCM frame even when the auth tag does not verify (Tuya quirk)', () => {
+        // Real Tuya status frames carry a GCM tag that does NOT verify against
+        // the documented AAD. We must decrypt with update() only (no final(),
+        // no tag check) or every realtime update is silently dropped — which is
+        // exactly what stopped external changes from reaching HomeKit. Simulate
+        // it by clobbering the trailing 16-byte tag: the plaintext must still
+        // come through.
+        const mq = makeIdle();
+        const received = [];
+        mq.subscribeDevice('DEV1', status => received.push(status));
+
+        const t = Date.now();
+        const raw = Buffer.from(
+            encryptGCM(JSON.stringify({devId: 'DEV1', status: [{code: 'switch_1', value: true}]}), mq.config.password, t),
+            'base64'
+        );
+        crypto.randomBytes(16).copy(raw, raw.length - 16); // corrupt the auth tag
+
+        mq._onMessage('topic', Buffer.from(JSON.stringify({protocol: 4, data: raw.toString('base64'), t})));
+
+        expect(received).toHaveLength(1);
+        expect(received[0]).toEqual([{code: 'switch_1', value: true}]);
+    });
+
     test('decrypts a legacy ECB (v1.0) frame too', () => {
         const mq = makeIdle();
         const received = [];
