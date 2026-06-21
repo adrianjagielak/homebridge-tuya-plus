@@ -75,6 +75,17 @@ const HAP = {
     },
     Formats: { FLOAT: 'float', UINT32: 'uint32', UINT16: 'uint16' },
     Perms: { READ: 'pr', NOTIFY: 'ev', WRITE: 'pw' },
+    // Subset of hap-nodejs HAPStatus + the HapStatusError class, so accessories
+    // can signal "No Response" the proper way (throw a HapStatusError from a
+    // get/set handler) and tests can assert on it.
+    HAPStatus: { SUCCESS: 0, SERVICE_COMMUNICATION_FAILURE: -70402 },
+    HapStatusError: class HapStatusError extends Error {
+        constructor(hapStatus) {
+            super('HapStatusError: ' + hapStatus);
+            this.name = 'HapStatusError';
+            this.hapStatus = hapStatus;
+        }
+    },
     // Mirrors hap-nodejs Categories. Intentionally kept faithful to the real
     // enum (no FANLIGHT, no bare DEHUMIDIFIER) so getCategory() regressions are
     // caught here instead of in production (see issue #45).
