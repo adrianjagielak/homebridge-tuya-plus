@@ -395,20 +395,12 @@ jobs:
             if (PUBLISH_RESULT === 'success') {
               const sha = (HEAD_SHA || '').slice(0, 7);
               const body = [
-                `🚀 Published this PR to npm for testing — built from \`${sha}\`.`,
+                `🚀 Published **\`${TAG}\`** for testing — commit \`${sha}\`.`,
                 ``,
-                `**Install this exact build:**`,
-                '```sh',
-                `npm install -g homebridge-tuya-plus@${VERSION}`,
-                '```',
-                `**…or follow this PR's tag** (always points at this PR's newest \`/publish\` build):`,
                 '```sh',
                 `npm install -g homebridge-tuya-plus@${TAG}`,
                 '```',
-                ``,
-                `In the Homebridge UI you can also paste \`${VERSION}\` into the plugin's “Install Alternate Version” field.`,
-                ``,
-                `> ℹ️ Prerelease for testing only — **not** tagged \`latest\` or \`dev\`, so it won't reach normal installs.`,
+                `Exact version: \`${VERSION}\``,
               ].join('\n');
               await github.rest.issues.createComment({ owner, repo, issue_number, body });
               await github.rest.reactions.createForIssueComment({ owner, repo, comment_id, content: 'rocket' });
