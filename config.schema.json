@@ -421,6 +421,12 @@
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['AirConditioner'].includes(model.devices[arrayIndices].type);"
               }
             },
+            "noAuto": {
+              "type": "boolean",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['AirConditioner'].includes(model.devices[arrayIndices].type);"
+              }
+            },
             "cmdCool": {
               "type": "string",
               "placeholder": "COOL",
@@ -433,6 +439,32 @@
               "placeholder": "HEAT",
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['AirConditioner'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "cmdAuto": {
+              "type": "string",
+              "placeholder": "AUTO",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['AirConditioner'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "noRotationSpeed": {
+              "type": "boolean",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['AirConditioner'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "fanSpeedSteps": {
+              "type": "integer",
+              "placeholder": "3",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['AirConditioner'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "noChildLock": {
+              "type": "boolean",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['AirConditioner', 'Convector'].includes(model.devices[arrayIndices].type);"
               }
             },
             "noSwing": {
@@ -569,12 +601,6 @@
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['Convector'].includes(model.devices[arrayIndices].type);"
               }
             },
-            "noChildLock": {
-              "type": "boolean",
-              "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices] && ['Convector'].includes(model.devices[arrayIndices].type);"
-              }
-            },
             "noTemperatureUnit": {
               "type": "boolean",
               "condition": {
@@ -585,14 +611,21 @@
               "type": "integer",
               "placeholder": "1",
               "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices] && ['SimpleHeater'].includes(model.devices[arrayIndices].type);"
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['SimpleHeater', 'AirConditioner'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "currentTemperatureDivisor": {
+              "type": "integer",
+              "placeholder": "1",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['AirConditioner'].includes(model.devices[arrayIndices].type);"
               }
             },
             "thresholdTemperatureDivisor": {
               "type": "integer",
               "placeholder": "1",
               "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices] && ['SimpleHeater'].includes(model.devices[arrayIndices].type);"
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['SimpleHeater', 'AirConditioner'].includes(model.devices[arrayIndices].type);"
               }
             },
             "temperatureOffset": {
