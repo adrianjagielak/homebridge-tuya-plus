@@ -123,6 +123,7 @@ class TuyaLan {
         const lanDeviceIds = [];      // ids we still want to find on the LAN
         const connectedDevices = [];  // ids discovered on the LAN
         const fakeDevices = [];
+        const seenUUIDs = new Set();  // accessory UUIDs already configured this run
 
         this.config.devices.forEach(device => {
             try {
@@ -136,6 +137,15 @@ class TuyaLan {
 
             if (!device.type) return this.log.error('%s (%s) doesn\'t have a type defined.', device.name || 'Unnamed device', device.id);
             if (!CLASS_DEF[device.type.toLowerCase()]) return this.log.error('%s (%s) doesn\'t have a valid type defined.', device.name || 'Unnamed device', device.id);
+
+            // Two config entries that resolve to the same accessory UUID (the same
+            // Tuya id, real or fake) make addAccessory process that UUID twice. The
+            // second pass reads back the accessory wrapper the first pass cached
+            // instead of a PlatformAccessory and crashes the child bridge while
+            // trying to unregister it. Keep the first entry; skip the rest.
+            const uuid = UUID.generate(UUID_SEED + (device.fake ? ':fake:' : ':') + device.id);
+            if (seenUUIDs.has(uuid)) return this.log.warn('%s (%s) is configured more than once; ignoring the duplicate entry.', device.name || 'Unnamed device', device.id);
+            seenUUIDs.add(uuid);
 
             if (device.fake) {
                 fakeDevices.push({name: device.id.slice(8), ...device});
@@ -337,9 +347,17 @@ class TuyaLan {
     removeAccessory(homebridgeAccessory) {
         if (!homebridgeAccessory) return;
 
+        // Only real PlatformAccessory instances can be unregistered. cachedAccessories
+        // also holds accessory wrappers (set by addAccessory), and Homebridge throws a
+        // fatal TypeError when handed anything else, taking down the whole child bridge.
+        // Guard against it rather than trust every caller.
+        if (!(homebridgeAccessory instanceof PlatformAccessory)) {
+            return this.log.warn('Skipped unregistering %s: not a PlatformAccessory.', homebridgeAccessory.displayName);
+        }
+
         this.log.warn('Unregistering', homebridgeAccessory.displayName);
 
-        delete this.cachedAccessories[homebridgeAccessory.UUID];
+        this.cachedAccessories.delete(homebridgeAccessory.UUID);
         this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [homebridgeAccessory]);
     }
 
