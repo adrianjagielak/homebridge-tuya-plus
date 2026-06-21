@@ -850,51 +850,6 @@
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type) && !model.devices[arrayIndices].noBattery;"
               }
-            },
-            "noRainSensor": {
-              "type": "boolean",
-              "title": "No rain sensor",
-              "description": "Disable the rain sensor (use if your controller doesn't report 'rain_sensor_state').",
-              "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type);"
-              }
-            },
-            "rainSensorType": {
-              "type": "string",
-              "title": "Rain sensor type",
-              "default": "contact",
-              "oneOf": [
-                { "title": "Contact sensor (Open / Closed)", "enum": ["contact"] },
-                { "title": "Leak sensor (Leak Detected / Dry — note: fires critical alerts)", "enum": ["leak"] }
-              ],
-              "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type) && !model.devices[arrayIndices].noRainSensor;"
-              }
-            },
-            "rainInverted": {
-              "type": "boolean",
-              "title": "Invert rain sensor",
-              "description": "Flip the reported state if 'raining' and 'dry' appear reversed in HomeKit.",
-              "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type) && !model.devices[arrayIndices].noRainSensor;"
-              }
-            },
-            "dpRain": {
-              "type": ["integer", "string"],
-              "placeholder": "49 or rain_sensor_state",
-              "title": "Rain sensor data-point (numeric id, or cloud code)",
-              "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type) && !model.devices[arrayIndices].noRainSensor;"
-              }
-            },
-            "rainOnValue": {
-              "type": "string",
-              "placeholder": "rain",
-              "title": "Rain sensor 'raining' value",
-              "description": "The enum value the device reports when it is raining (default 'rain').",
-              "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type) && !model.devices[arrayIndices].noRainSensor;"
-              }
             }
           }
         }

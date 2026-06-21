@@ -66,8 +66,7 @@ Authenticates as your app account (username/password), so it sees exactly the de
             "type": "IrrigationSystem",
             "id": "bfae6739xxxxxxxxxxxxxx",      // the cloud Device ID
             "cloud": true,
-            "valveCount": 4,
-            "noRainSensor": true                 // most battery timers have no rain DP
+            "valveCount": 4
         }
     ]
 }
@@ -124,8 +123,7 @@ The `IrrigationSystem` defaults already match the common 4-zone layout (`switch_
     { "name": "Front Lawn", "dp": "switch_1", "defaultDuration": 900 },
     { "name": "Back Lawn",  "dp": "switch_2", "defaultDuration": 900 }
 ],
-"dpBattery": "battery_percentage",
-"noRainSensor": true                  // or: "dpRain": "rain_sensor_state"
+"dpBattery": "battery_percentage"
 ```
 
 See **[Irrigation Systems / Sprinklers](https://github.com/adrianjagielak/homebridge-tuya-plus/blob/main/wiki/Supported-Device-Types.md#irrigation-systems--sprinklers)** for all options (per-zone durations, master switch, etc.).

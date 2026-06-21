@@ -751,12 +751,11 @@ If the light, brightness and turning the fan **off** all work, but turning the f
 
 ### Irrigation Systems / Sprinklers
 
-Multi-valve Tuya irrigation/sprinkler controllers (the battery-powered Wi-Fi "faucet timers" that expose several `switch_*` valves, a `battery_percentage` and a `rain_sensor_state`) are exposed as a single, fully-fledged HomeKit **Irrigation System** accessory:
+Multi-valve Tuya irrigation/sprinkler controllers (the battery-powered Wi-Fi "faucet timers" that expose several `switch_*` valves and a `battery_percentage`) are exposed as a single, fully-fledged HomeKit **Irrigation System** accessory:
 
 * one **Irrigation System** tile that contains every zone,
 * one **Valve** per zone (`ValveType = Irrigation`) — each with its own on/off, its own **Duration** picker and a live countdown,
-* an optional **Battery** service (level, low-battery warning, and — for solar/USB-C rechargeable units that report it — live charging status),
-* an optional **rain sensor** (a Contact sensor by default).
+* an optional **Battery** service (level, low-battery warning, and — for solar/USB-C rechargeable units that report it — live charging status).
 
 Because these devices are slow to respond, all zone changes that happen close together — turning the whole system on/off, or running a scene that toggles several zones — are merged into a **single** Tuya command instead of a burst of them.
 
@@ -769,14 +768,13 @@ Because these devices are slow to respond, all zone changes that happen close to
     "type": "IrrigationSystem",
     "id": "bfae6739xxxxxxxxxxxxxx",   // the cloud Device ID
     "cloud": true,
-    "valveCount": 4,
-    "noRainSensor": true              // many battery timers have no rain sensor
+    "valveCount": 4
 }
 ```
 
 #### Minimal Configuration
 
-The defaults match the common 4-zone layout (valves A–D on data-points `1`–`4`, battery on `46`, rain on `49`):
+The defaults match the common 4-zone layout (valves A–D on data-points `1`–`4`, battery on `46`):
 
 ```json5
 {
@@ -799,10 +797,6 @@ Each zone has its own **Duration**. When a zone is switched on it runs for that 
 #### Master ("toggle all") switch
 
 Switching the whole Irrigation System tile **off** closes every open zone, and switching it **on** opens every zone — each as one combined command (mirroring the physical "all" button many of these controllers have). Either direction can be disabled with `masterTurnsOffAllZones` / `masterTurnsOnAllZones`.
-
-#### Rain sensor: Contact vs Leak
-
-By default the rain sensor is a **Contact sensor** (`raining → Open`). You can switch it to a **Leak sensor** (`raining → Leak Detected`) with `"rainSensorType": "leak"` — leak sensors read more naturally for rain and make "when it starts raining" automations obvious, **but HomeKit treats them as safety accessories and raises critical alerts that bypass Do-Not-Disturb on every rainfall**, which many people find too noisy. Use `rainInverted` if the wet/dry states appear reversed.
 
 #### Full Configuration
 
@@ -841,12 +835,5 @@ By default the rain sensor is a **Contact sensor** (`raining → Open`). You can
     "lowBatteryThreshold": 20,
     "dpCharging": 101,   /* boolean charging-status DP (solar / USB-C); omit if not reported */
     /* "noBattery": true, */
-
-    /* --- Rain sensor (omit / set noRainSensor:true if not present) --- */
-    "dpRain": 49,
-    "rainSensorType": "contact", /* or "leak" */
-    "rainOnValue": "rain",       /* enum value reported while raining */
-    "rainInverted": false
-    /* "noRainSensor": true, */
 }
 ```
