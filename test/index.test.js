@@ -5,7 +5,6 @@
 // discovery -> attachLan routing) in isolation.
 jest.mock('../lib/TuyaDevice', () => jest.fn().mockImplementation(function(props) {
     this.context = {...props};
-    this.cloudPrimary = !!props.cloudPrimary;
     this.cloud = props.cloudApi ? {} : null; // truthy iff a shared cloud session was handed in
     this.attachLan = jest.fn();
     this._connect = jest.fn();
@@ -75,7 +74,8 @@ const propsFor = id => {
 const instanceFor = id => TuyaDevice.mock.instances.find(i => i.context && i.context.id === id);
 
 const SW = (extra = {}) => ({id: 'bf11111111111111', key: 'k1', type: 'switch', name: 'Switch', ...extra});
-const SLEEPY = (extra = {}) => ({id: 'bf22222222222222', type: 'irrigationsystem', name: 'Sprinklers', cloud: true, ...extra});
+// A keyless device can't speak the LAN protocol, so it is cloud-only.
+const SLEEPY = (extra = {}) => ({id: 'bf22222222222222', type: 'irrigationsystem', name: 'Sprinklers', ...extra});
 const CLOUD = {accessId: 'aid', accessKey: 'akey', region: 'eu'};
 
 // discoverDevices schedules a long discovery-timeout timer; fake timers keep it
@@ -102,44 +102,23 @@ describe('TuyaLan — cloud session setup', () => {
         expect(TuyaCloudApi).toHaveBeenCalledTimes(1);
         expect(TuyaCloudMessaging).not.toHaveBeenCalled();
     });
-
-    test('legacy per-device cloud credentials are adopted as the global session', () => {
-        run({devices: [SW({cloud: {accessId: 'x', accessKey: 'y', region: 'us'}})]});
-        expect(TuyaCloudApi).toHaveBeenCalledTimes(1);
-        expect(TuyaCloudApi.mock.calls[0][0]).toMatchObject({accessId: 'x', accessKey: 'y'});
-    });
 });
 
-describe('TuyaLan — per-device cloud policy', () => {
-    test('with a session, an ordinary device gets the global cloud fallback', () => {
-        run({cloud: CLOUD, devices: [SW()]});
-        const p = propsFor('bf11111111111111');
-        expect(p.cloudApi).toBeDefined();
-        expect(p.cloudPrimary).toBe(false);
+describe('TuyaLan — cloud participation', () => {
+    test('with a session, every device shares the one global fallback', () => {
+        run({cloud: CLOUD, devices: [SW(), SLEEPY()]});
+        expect(propsFor('bf11111111111111').cloudApi).toBeDefined(); // LAN device, cloud fallback
+        expect(propsFor('bf22222222222222').cloudApi).toBeDefined(); // keyless, cloud-only
     });
 
-    test('cloud:true marks a device cloud-primary', () => {
-        run({cloud: CLOUD, devices: [SLEEPY()]});
-        const p = propsFor('bf22222222222222');
-        expect(p.cloudApi).toBeDefined();
-        expect(p.cloudPrimary).toBe(true);
-        expect(p.cloud).toBe(true); // normalised for accessory _isCloud()
-    });
-
-    test('cloud:false opts a device out entirely, even with a session', () => {
-        run({cloud: CLOUD, devices: [SW({cloud: false})]});
+    test('without a session, no device gets a cloud backend', () => {
+        run({devices: [SW()]});
         expect(propsFor('bf11111111111111').cloudApi).toBeUndefined();
-    });
-
-    test('cloud.fallback:false keeps cloud only for explicitly-cloud devices', () => {
-        run({cloud: {...CLOUD, fallback: false}, devices: [SW(), SLEEPY()]});
-        expect(propsFor('bf11111111111111').cloudApi).toBeUndefined(); // ordinary device: no fallback
-        expect(propsFor('bf22222222222222').cloudApi).toBeDefined();   // cloud:true: still cloud
     });
 });
 
 describe('TuyaLan — discovery routing', () => {
-    test('only LAN-capable (keyed, non-cloud-primary) devices are discovered', () => {
+    test('only keyed devices are discovered; keyless ones are cloud-only', () => {
         run({cloud: CLOUD, devices: [SW(), SLEEPY()]});
         expect(TuyaDiscovery.start).toHaveBeenCalledTimes(1);
         expect(TuyaDiscovery.start.mock.calls[0][0].ids).toEqual(['bf11111111111111']);

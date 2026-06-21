@@ -75,12 +75,6 @@
             "title": "Realtime updates (MQTT)",
             "default": true,
             "description": "Receive instant updates over Tuya's MQTT message service (uses the 'mqtt' package, installed automatically). If disabled, devices stay controllable and show their state at startup, but external changes (physical buttons, the device's own timers) won't be reflected until restart."
-          },
-          "fallback": {
-            "type": "boolean",
-            "title": "Use the cloud as a fallback for every device",
-            "default": true,
-            "description": "On by default: with credentials set, every device automatically falls back to the cloud when it can't be reached on the LAN. Turn this off to limit cloud use to only the devices you explicitly tick 'Control via Tuya Cloud' below (the older opt-in-per-device behavior)."
           }
         }
       },
@@ -203,16 +197,7 @@
             "key": {
               "title": "Tuya Key (local key — required for LAN devices)",
               "type": "string",
-              "description": "The device's local key. Required for normal (LAN) devices. Not needed for cloud devices (tick 'Control via Tuya Cloud' below).",
-              "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices].type !== 'null';"
-              }
-            },
-            "cloud": {
-              "type": ["boolean", "object"],
-              "title": "Control via Tuya Cloud (cloud-first for this device)",
-              "default": false,
-              "description": "Leave unticked for normal devices — with cloud credentials set above, they already fall back to the cloud automatically when the LAN can't reach them. Tick this only for hardware that is never on the LAN (e.g. a battery-powered 'sleepy' irrigation timer): it's then controlled over the cloud first and skips LAN discovery. (To keep a device strictly local and never use the cloud, set this to false.) Advanced/legacy: an object with { accessId, accessKey, region, … } is still accepted, but a single top-level 'cloud' block is now preferred.",
+              "description": "The device's local key. Required for normal (LAN) devices. A device with no key is treated as cloud-only and is reached through the Tuya Cloud session configured above (e.g. a battery-powered 'sleepy' irrigation timer).",
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices].type !== 'null';"
               }
@@ -756,7 +741,7 @@
               "type": "integer",
               "title": "Number of Valves / Zones",
               "placeholder": 4,
-              "description": "How many valves/zones the controller has. They are assumed to be on data-points 1, 2, 3, … (or, for cloud devices, on the codes switch_1, switch_2, …). For non-sequential data-points use the 'valves' list instead.",
+              "description": "How many valves/zones the controller has. They are assumed to be on data-points 1, 2, 3, … (over the cloud these map to the codes switch_1, switch_2, … automatically). For non-sequential data-points use the 'valves' list instead.",
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type);"
               }

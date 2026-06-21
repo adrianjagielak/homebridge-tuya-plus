@@ -473,46 +473,19 @@ describe('IrrigationSystemAccessory — charging state', () => {
     });
 });
 
-describe('IrrigationSystemAccessory — cloud mode (data-points keyed by code)', () => {
-    // Mirrors a real Tuya "sfkzq" watering controller reached over the cloud:
-    // valves are switch_1..4 and battery is battery_percentage.
-    const cloudState = () => ({ switch_1: false, switch_2: false, switch_3: false, switch_4: false, battery_percentage: 99 });
-    const cloudCtx = { cloud: true };
-
+describe('IrrigationSystemAccessory — data-points addressed by code', () => {
+    // The accessory is transport-agnostic: a data-point may be a numeric id or a
+    // Tuya "code". The LAN+cloud TuyaDevice keeps state dual-keyed and translates
+    // writes, so irrigation has no cloud-specific logic — it just uses the dp
+    // strings it's given. A device reached over the cloud commonly addresses its
+    // zones as switch_1.. and battery as battery_percentage.
     beforeEach(() => jest.useFakeTimers());
     afterEach(() => { jest.clearAllTimers(); jest.useRealTimers(); });
 
-    test('default valves use Tuya codes switch_1..switch_4 (not numeric ids)', () => {
-        const { accessory } = makeHarness(cloudState(), cloudCtx);
-        ['switch_1', 'switch_2', 'switch_3', 'switch_4'].forEach(code => {
-            expect(valve(accessory, code)).toBeTruthy();
-        });
-        expect(valve(accessory, '1')).toBeFalsy();
-    });
-
-    test('turning a zone on writes the code/value to the device', () => {
-        const { accessory, device } = makeHarness(cloudState(), cloudCtx);
-        valve(accessory, 'switch_1').getCharacteristic(Characteristic.Active).triggerSet(1);
-        jest.advanceTimersByTime(500);
-        expect(device.update).toHaveBeenCalledWith({ switch_1: true });
-    });
-
-    test('battery is read from the battery_percentage code', () => {
-        const { accessory } = makeHarness(cloudState(), cloudCtx);
-        const battery = accessory.getService(Service.Battery);
-        expect(battery.getCharacteristic(Characteristic.BatteryLevel).value).toBe(99);
-    });
-
-    test('a realtime change keyed by code is reflected in HomeKit', () => {
-        const { accessory, device } = makeHarness(cloudState(), cloudCtx);
-        device.emitChange({ switch_2: true });
-        expect(valve(accessory, 'switch_2').getCharacteristic(Characteristic.Active).value).toBe(Characteristic.Active.ACTIVE);
-    });
-
-    test('an explicit valve list may use custom codes', () => {
+    test('an explicit valve list may use string codes', () => {
         const { accessory, device } = makeHarness(
             { zone_a: false, zone_b: false, battery_percentage: 50 },
-            { cloud: true, valves: [{ name: 'A', dp: 'zone_a' }, { name: 'B', dp: 'zone_b' }] }
+            { valves: [{ name: 'A', dp: 'zone_a' }, { name: 'B', dp: 'zone_b' }], dpBattery: 'battery_percentage' }
         );
         expect(valve(accessory, 'zone_a')).toBeTruthy();
         valve(accessory, 'zone_b').getCharacteristic(Characteristic.Active).triggerSet(1);
@@ -520,35 +493,57 @@ describe('IrrigationSystemAccessory — cloud mode (data-points keyed by code)',
         expect(device.update).toHaveBeenCalledWith({ zone_b: true });
     });
 
-    test('turning a zone off still writes false when the cloud never echoed the "on"', () => {
-        // The real cloud device never optimistically advances `state`; it only
-        // moves when the realtime stream confirms the device. Emulate that by
-        // making update() a no-op on state. A follow-up "off" must STILL be sent
-        // — otherwise the valve stays open while HomeKit shows it closed (the
+    test('battery can be read from a code data-point', () => {
+        const { accessory } = makeHarness(
+            { zone_a: false, battery_percentage: 99 },
+            { valves: [{ name: 'A', dp: 'zone_a' }], dpBattery: 'battery_percentage' }
+        );
+        expect(accessory.getService(Service.Battery).getCharacteristic(Characteristic.BatteryLevel).value).toBe(99);
+    });
+
+    test('a device-side change keyed by code is reflected in HomeKit', () => {
+        const { accessory, device } = makeHarness(
+            { zone_a: false, zone_b: false },
+            { valves: [{ name: 'A', dp: 'zone_a' }, { name: 'B', dp: 'zone_b' }], noBattery: true }
+        );
+        device.emitChange({ zone_b: true });
+        expect(valve(accessory, 'zone_b').getCharacteristic(Characteristic.Active).value).toBe(Characteristic.Active.ACTIVE);
+    });
+
+    test('turning a zone off still writes false when the device never echoed the "on"', () => {
+        // A device (notably over the cloud) may not optimistically advance `state`;
+        // it only moves when the device confirms. A follow-up "off" must STILL be
+        // sent — otherwise the valve stays open while HomeKit shows it closed (the
         // exact "can turn on but not off" report).
-        const { accessory, device } = makeHarness(cloudState(), { ...cloudCtx, defaultDuration: 0 });
+        const { accessory, device } = makeHarness(
+            { zone_a: false },
+            { valves: [{ name: 'A', dp: 'zone_a' }], noBattery: true, defaultDuration: 0 }
+        );
         device.update.mockImplementation(() => true); // writes never touch state
-        const v = valve(accessory, 'switch_1');
+        const v = valve(accessory, 'zone_a');
 
         v.getCharacteristic(Characteristic.Active).triggerSet(1);
         jest.advanceTimersByTime(500);
-        expect(device.update).toHaveBeenLastCalledWith({ switch_1: true });
+        expect(device.update).toHaveBeenLastCalledWith({ zone_a: true });
 
         v.getCharacteristic(Characteristic.Active).triggerSet(0);
         jest.advanceTimersByTime(500);
-        expect(device.update).toHaveBeenLastCalledWith({ switch_1: false });
+        expect(device.update).toHaveBeenLastCalledWith({ zone_a: false });
     });
 
-    test('master OFF closes zones the cloud has not echoed as open', () => {
-        const { accessory, device } = makeHarness(cloudState(), { ...cloudCtx, defaultDuration: 0 });
+    test('master OFF closes zones the device has not echoed as open', () => {
+        const { accessory, device } = makeHarness(
+            { zone_a: false, zone_b: false },
+            { valves: [{ name: 'A', dp: 'zone_a' }, { name: 'B', dp: 'zone_b' }], noBattery: true, defaultDuration: 0 }
+        );
         device.update.mockImplementation(() => true); // writes never touch state
 
-        valve(accessory, 'switch_1').getCharacteristic(Characteristic.Active).triggerSet(1);
-        valve(accessory, 'switch_2').getCharacteristic(Characteristic.Active).triggerSet(1);
+        valve(accessory, 'zone_a').getCharacteristic(Characteristic.Active).triggerSet(1);
+        valve(accessory, 'zone_b').getCharacteristic(Characteristic.Active).triggerSet(1);
         jest.advanceTimersByTime(500);
 
         irrigation(accessory).getCharacteristic(Characteristic.Active).triggerSet(0);
         jest.advanceTimersByTime(500);
-        expect(device.update).toHaveBeenLastCalledWith({ switch_1: false, switch_2: false });
+        expect(device.update).toHaveBeenLastCalledWith({ zone_a: false, zone_b: false });
     });
 });

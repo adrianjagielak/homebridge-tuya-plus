@@ -146,10 +146,12 @@ class TuyaLan {
             this.tuyaDevices.set(device.id, tuyaDevice);
             this.addAccessory(tuyaDevice);
 
-            // A device that can be reached locally (has a local key and isn't a
-            // cloud-only/"sleepy" unit) still wants LAN discovery; the cloud, if
-            // configured, is its fallback.
-            if (device.key && !tuyaDevice.cloudPrimary) lanDeviceIds.push(device.id);
+            // A device with a local key can be reached on the LAN, so it wants
+            // discovery; the cloud, when configured, is its fallback. A device with
+            // no key is cloud-only (e.g. a battery-powered "sleepy" unit) and relies
+            // on the cloud session to be reachable at all.
+            if (device.key) lanDeviceIds.push(device.id);
+            else if (!this.cloudApi) this.log.error('%s (%s) has no local key and no Tuya Cloud session is configured, so it can\'t be reached. Add a key for LAN control, or a top-level "cloud" block.', tuyaDevice.context.name, device.id);
         });
 
         fakeDevices.forEach(config => {
@@ -215,29 +217,12 @@ class TuyaLan {
      *  on the LAN at all). It's all opt-in — without `cloud`, nothing here runs.
      * ------------------------------------------------------------------ */
 
-    // The credentials for the single global session: the platform-level `cloud`
-    // block. For backward compatibility we also accept credentials left on a
-    // device's own `cloud` object (older, per-device style) and adopt the first
-    // set found, since the plugin now runs just one session.
-    _resolveGlobalCloudConfig() {
-        if (this.config.cloud && typeof this.config.cloud === 'object') return this.config.cloud;
-
-        for (const device of this.config.devices) {
-            if (device && typeof device.cloud === 'object' && device.cloud && device.cloud.accessId && device.cloud.accessKey) {
-                this.log.warn('Per-device "cloud" credentials are deprecated; adopting %s\'s as the single global Tuya Cloud session. Move them to a top-level "cloud" block.', device.name || device.id);
-                return device.cloud;
-            }
-        }
-        return null;
-    }
-
     _setupCloudSession() {
-        const cloudCfg = this._resolveGlobalCloudConfig();
-        if (!cloudCfg || !cloudCfg.accessId || !cloudCfg.accessKey) {
-            if (this.config.devices.some(d => d && d.cloud)) {
-                this.log.error('A device is configured for the Tuya Cloud, but no usable credentials were found. Add a top-level "cloud" block (accessId, accessKey, region). See the wiki: Tuya Cloud Setup.');
-            }
-            return;
+        const cloudCfg = (this.config.cloud && typeof this.config.cloud === 'object') ? this.config.cloud : null;
+        if (!cloudCfg) return; // no cloud block: the plugin runs purely on the LAN
+
+        if (!cloudCfg.accessId || !cloudCfg.accessKey) {
+            return this.log.error('A "cloud" block is present but is missing accessId/accessKey, so the Tuya Cloud fallback is disabled. See the wiki: Tuya Cloud Setup.');
         }
 
         this.cloudApi = new TuyaCloudApi({...cloudCfg, log: this.log});
@@ -248,35 +233,12 @@ class TuyaLan {
         this.log.info('Tuya Cloud fallback enabled via %s%s.', this.cloudApi.endpoint, this.cloudMessaging ? ' (with realtime updates)' : ' (realtime updates disabled)');
     }
 
-    // Whether a device participates in the cloud session at all. With a session
-    // configured, every device does — that is the global fallback — unless it
-    // opts out (`cloud: false`) or the fallback is globally disabled
-    // (`cloud.fallback: false`, which keeps cloud for the explicitly-cloud devices
-    // only, matching the older opt-in-per-device behavior).
-    _deviceUsesCloud(device) {
-        if (!this.cloudApi) return false;
-        if (device.cloud === false) return false;
-        if (this._isCloudPrimary(device)) return true;
-        return !(this.config.cloud && this.config.cloud.fallback === false);
-    }
-
-    // Cloud-primary devices are reached over the cloud first and don't wait for (or
-    // warn about) the LAN — the battery-powered "sleepy" timers, and any device the
-    // user explicitly pins with `cloud: true` (or the legacy per-device creds).
-    _isCloudPrimary(device) {
-        return device.cloud === true || (typeof device.cloud === 'object' && !!device.cloud);
-    }
-
     _createDevice(device) {
-        const usesCloud = this._deviceUsesCloud(device);
-        const cloudPrimary = this._isCloudPrimary(device);
+        // The one shared cloud session, when configured, backs every device as its
+        // fallback. There is no per-device cloud configuration.
+        const usesCloud = !!this.cloudApi;
         return new TuyaDevice({
             ...device,
-            // Normalise `cloud` to a plain boolean on the device's context so
-            // accessories' own cloud checks (e.g. IrrigationSystem._isCloud) keep
-            // working whether the user wrote `cloud: true` or a credentials object.
-            cloud: cloudPrimary ? true : device.cloud,
-            cloudPrimary,
             cloudApi: usesCloud ? this.cloudApi : undefined,
             messaging: usesCloud ? this.cloudMessaging : undefined,
             cloudStartDelay: usesCloud ? this._nextCloudStartDelay() : 0,

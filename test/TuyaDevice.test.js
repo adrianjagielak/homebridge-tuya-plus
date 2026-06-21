@@ -207,11 +207,7 @@ describe('TuyaDevice — registration source guard', () => {
         expect(dev._mayRegisterFrom('cloud')).toBe(true);
     });
 
-    test('a cloud-primary or keyless device registers off the cloud immediately', () => {
-        const primary = makeDevice({cloudPrimary: true});
-        primary.cloud = fakeBackend({codeByDpId: {}});
-        expect(primary._mayRegisterFrom('cloud')).toBe(true);
-
+    test('a keyless (cloud-only) device registers off the cloud immediately', () => {
         const keyless = makeDevice({key: undefined});
         keyless.cloud = fakeBackend({codeByDpId: {}});
         expect(keyless._mayRegisterFrom('cloud')).toBe(true);

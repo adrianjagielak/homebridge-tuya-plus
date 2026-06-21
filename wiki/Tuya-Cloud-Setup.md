@@ -44,9 +44,9 @@ Still in the project: **Devices → Link App Account → Add App Account**, then
 
 ## 5. Configure the plugin
 
-Add a **top-level `cloud` block** with your credentials. That's all the global fallback needs — every device then tries the LAN first and uses the cloud as a backup.
+Add a **top-level `cloud` block** with your credentials. That's all that's needed — every device then tries the LAN first and uses the cloud as a backup.
 
-For a device that is **never** reachable on the LAN (a battery-powered "sleepy" timer), also set **`"cloud": true`** on it, so it's controlled cloud-first and doesn't wait on LAN discovery. There are two project styles:
+A device that is **never** reachable on the LAN (a battery-powered "sleepy" timer) simply has **no local `key`**: without one it can't speak the LAN protocol, so the plugin reaches it through the cloud session. There are two project styles:
 
 ### Smart Home project (recommended — what most people have)
 
@@ -69,8 +69,8 @@ Authenticates as your app account (username/password), so it sees exactly the de
             "name": "Garden Irrigation",
             "type": "IrrigationSystem",
             "id": "bfae6739xxxxxxxxxxxxxx",      // the cloud Device ID
-            "cloud": true,
             "valveCount": 4
+            // no "key" -> this device is reached over the cloud
         }
     ]
 }
@@ -88,29 +88,7 @@ If you created a **Custom** project (devices linked by QR to the project's asset
 }
 ```
 
-### Per-device credentials (deprecated)
-
-The plugin now runs a **single** Cloud session for the whole platform, so per-device credentials are deprecated. For backward compatibility, if there's no top-level `cloud` block the plugin adopts the first device's credentials as the global session — but you should move them to a top-level `cloud` block. (Several different Tuya accounts in one Homebridge instance are no longer supported.)
-
-Older form, still accepted:
-
-```json5
-{
-    "name": "Garden Irrigation",
-    "type": "IrrigationSystem",
-    "id": "bfae6739xxxxxxxxxxxxxx",
-    "cloud": {
-        "accessId": "…",
-        "accessKey": "…",
-        "region": "eu",
-        "username": "…",
-        "password": "…",
-        "countryCode": "48"
-    }
-}
-```
-
-> No local `key` is needed for cloud devices — the cloud authenticates with your project credentials.
+> There is one global session. The plugin doesn't support per-device cloud credentials or multiple Tuya accounts — put your credentials in the single top-level `cloud` block. A cloud-only device just omits its local `key`.
 
 ---
 
