@@ -181,10 +181,10 @@ describe('setStateAsync', () => {
         expect(device.update).not.toHaveBeenCalled();
     });
 
-    test('skips silently when device is not connected (issue #34)', () => {
+    test('rejects with a comm-failure HapStatusError when device is not connected', async () => {
         const { instance, device } = make({ '1': false });
         device.connected = false;
-        expect(() => instance.setStateAsync('1', true)).not.toThrow();
+        await expect(instance.setStateAsync('1', true)).rejects.toBeInstanceOf(HAP.HapStatusError);
         expect(device.update).not.toHaveBeenCalled();
     });
 });
@@ -204,11 +204,28 @@ describe('setMultiStateAsync', () => {
         expect(device.update).not.toHaveBeenCalled();
     });
 
-    test('skips silently when device is not connected (issue #34)', () => {
+    test('resolves when the device accepts the writes', async () => {
+        const { instance } = make({ '1': false });
+        await expect(instance.setMultiStateAsync({ '1': true })).resolves.toBeUndefined();
+    });
+
+    test('rejects with a comm-failure HapStatusError when device is not connected', async () => {
         const { instance, device } = make({ '1': false });
         device.connected = false;
-        expect(() => instance.setMultiStateAsync({ '1': true, '2': 50 })).not.toThrow();
+        await expect(instance.setMultiStateAsync({ '1': true, '2': 50 })).rejects.toBeInstanceOf(HAP.HapStatusError);
         expect(device.update).not.toHaveBeenCalled();
+    });
+
+    test('rejects when the device write is not accepted (returns false)', async () => {
+        const { instance, device } = make({ '1': false });
+        device.update.mockReturnValue(false);
+        await expect(instance.setMultiStateAsync({ '1': true })).rejects.toBeInstanceOf(HAP.HapStatusError);
+    });
+
+    test('awaits an async device write result (cloud) and rejects on failure', async () => {
+        const { instance, device } = make({ '1': false });
+        device.update.mockResolvedValue(false);
+        await expect(instance.setMultiStateAsync({ '1': true })).rejects.toBeInstanceOf(HAP.HapStatusError);
     });
 });
 
@@ -220,11 +237,33 @@ describe('setMultiStateLegacyAsync', () => {
         expect(device.update).toHaveBeenCalledWith({ '1': true, '3': '2' });
     });
 
-    test('skips silently when device is not connected (issue #34)', () => {
+    test('rejects with a comm-failure HapStatusError when device is not connected', async () => {
         const { instance, device } = make();
         device.connected = false;
-        expect(() => instance.setMultiStateLegacyAsync({ '1': true })).not.toThrow();
+        await expect(instance.setMultiStateLegacyAsync({ '1': true })).rejects.toBeInstanceOf(HAP.HapStatusError);
         expect(device.update).not.toHaveBeenCalled();
+    });
+
+    test('rejects when the device write is not accepted (returns false)', async () => {
+        const { instance, device } = make();
+        device.update.mockReturnValue(false);
+        await expect(instance.setMultiStateLegacyAsync({ '1': true })).rejects.toBeInstanceOf(HAP.HapStatusError);
+    });
+});
+
+describe('background write helpers (never throw/reject)', () => {
+    test('setStateInBackground swallows a disconnected-device failure', async () => {
+        const { instance, device } = make({ '1': false });
+        device.connected = false;
+        expect(() => instance.setStateInBackground('1', true)).not.toThrow();
+        // Give the rejected inner promise a tick to settle; it must be caught.
+        await Promise.resolve();
+    });
+
+    test('setMultiStateLegacyInBackground still dispatches the write when connected', () => {
+        const { instance, device } = make();
+        instance.setMultiStateLegacyInBackground({ '1': true });
+        expect(device.update).toHaveBeenCalledWith({ '1': true });
     });
 });
 
@@ -243,14 +282,48 @@ describe('getDividedStateAsync', () => {
     });
 });
 
+describe('getState (callback)', () => {
+    test('returns the DP value via the callback when connected', done => {
+        const { instance } = make({ '1': true });
+        instance.getState('1', (err, value) => {
+            expect(err).toBeNull();
+            expect(value).toBe(true);
+            done();
+        });
+    });
+
+    test('invokes the callback with a comm-failure error when not connected', () => {
+        const { instance, device } = make({ '1': true });
+        device.connected = false;
+        const cb = jest.fn();
+        instance.getState('1', cb);
+        expect(cb).toHaveBeenCalledWith(expect.any(HAP.HapStatusError));
+    });
+});
+
 describe('setMultiState (legacy callback)', () => {
-    test('skips silently and invokes callback without error when not connected (issue #34)', () => {
+    test('invokes the callback without error on a successful write', () => {
+        const { instance } = make({ '1': false });
+        const cb = jest.fn();
+        instance.setMultiState({ '1': true }, cb);
+        expect(cb).toHaveBeenCalledWith(null);
+    });
+
+    test('invokes the callback with a comm-failure error when not connected', () => {
         const { instance, device } = make({ '1': false });
         device.connected = false;
         const cb = jest.fn();
         instance.setMultiState({ '1': true }, cb);
         expect(device.update).not.toHaveBeenCalled();
-        expect(cb).toHaveBeenCalledWith();
+        expect(cb).toHaveBeenCalledWith(expect.any(HAP.HapStatusError));
+    });
+
+    test('invokes the callback with a comm-failure error when the write is not accepted', () => {
+        const { instance, device } = make({ '1': false });
+        device.update.mockReturnValue(false);
+        const cb = jest.fn();
+        instance.setMultiState({ '1': true }, cb);
+        expect(cb).toHaveBeenCalledWith(expect.any(HAP.HapStatusError));
     });
 
     test('tolerates a missing callback when not connected', () => {
@@ -261,13 +334,13 @@ describe('setMultiState (legacy callback)', () => {
 });
 
 describe('setMultiStateLegacy (legacy callback)', () => {
-    test('skips silently and invokes callback without error when not connected (issue #34)', () => {
+    test('invokes the callback with a comm-failure error when not connected', () => {
         const { instance, device } = make();
         device.connected = false;
         const cb = jest.fn();
         instance.setMultiStateLegacy({ '1': true }, cb);
         expect(device.update).not.toHaveBeenCalled();
-        expect(cb).toHaveBeenCalledWith();
+        expect(cb).toHaveBeenCalledWith(expect.any(HAP.HapStatusError));
     });
 });
 

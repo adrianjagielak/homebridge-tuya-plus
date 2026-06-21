@@ -56,8 +56,29 @@ describe('TuyaCloudDevice', () => {
         const api = makeApi();
         const dev = makeDevice(api);
         expect(dev.connected).toBe(false);
-        expect(() => dev.update({switch_1: true})).not.toThrow();
+        expect(dev.update({switch_1: true})).toBe(false);
         expect(api.sendCommands).not.toHaveBeenCalled();
+    });
+
+    test('update resolves to the cloud command result so failures are awaitable', async () => {
+        const api = makeApi();
+        const dev = makeDevice(api);
+        await dev._connect();
+
+        api.sendCommands.mockResolvedValueOnce(true);
+        await expect(dev.update({switch_1: true})).resolves.toBe(true);
+
+        api.sendCommands.mockResolvedValueOnce(false);
+        await expect(dev.update({switch_1: true})).resolves.toBe(false);
+    });
+
+    test('update resolves to false (never rejects) when the cloud request throws', async () => {
+        const api = makeApi();
+        const dev = makeDevice(api);
+        await dev._connect();
+
+        api.sendCommands.mockRejectedValueOnce(new Error('network down'));
+        await expect(dev.update({switch_1: true})).resolves.toBe(false);
     });
 
     test('applyStatus emits only the changed data-points', async () => {

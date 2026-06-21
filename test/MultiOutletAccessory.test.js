@@ -86,4 +86,16 @@ describe('MultiOutletAccessory.setPower — debounce batching', () => {
         await p;
         expect(device.update).not.toHaveBeenCalled();
     });
+
+    test('surfaces a comm-failure error (No Response) when disconnected', () => {
+        // A tap on an unreachable outlet must fail in HomeKit instead of being
+        // silently dropped after the debounce.
+        const { instance, device } = makeOutlet({ '1': false });
+        device.connected = false;
+        let err;
+        try { instance.setPower('1', true); } catch (e) { err = e; }
+        expect(err).toBeInstanceOf(HAP.HapStatusError);
+        expect(err.hapStatus).toBe(HAP.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+        expect(device.update).not.toHaveBeenCalled();
+    });
 });

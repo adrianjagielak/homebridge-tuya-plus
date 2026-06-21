@@ -1,7 +1,7 @@
 'use strict';
 
 const SimpleFanLightAccessory = require('../lib/SimpleFanLightAccessory');
-const { makeInstance } = require('./support/mocks');
+const { makeInstance, HAP } = require('./support/mocks');
 
 // Mirror the state that _registerCharacteristics would establish (the mock
 // service shares a single characteristic, so wiring the fields manually keeps
@@ -290,10 +290,10 @@ describe('SimpleFanLightAccessory.getColorTemp / setColorTemp', () => {
         expect(device.update).toHaveBeenCalledWith({ '23': 1000 });
     });
 
-    test('setColorTemp does not write when the device is disconnected', () => {
+    test('setColorTemp rejects (No Response) and writes nothing when disconnected', async () => {
         const { instance, device } = makeFanLight({ '23': 500 });
         device.connected = false;
-        expect(() => instance.setColorTemp(370)).not.toThrow();
+        await expect(instance.setColorTemp(370)).rejects.toBeInstanceOf(HAP.HapStatusError);
         expect(device.update).not.toHaveBeenCalled();
     });
 });
