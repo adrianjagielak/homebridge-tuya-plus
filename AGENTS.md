@@ -91,6 +91,29 @@ When adding or changing a device type, follow the existing pattern:
   `no-prototype-builtins`) as tech debt; don't rely on or expand that. Keep new
   code clean.
 
+## Logging
+
+Users run this in Homebridge and read these logs; a chatty plugin is a real
+complaint. The bar for a non-debug line is high.
+
+- **`debug` is the default.** Anything routine, per-message, per-state-change,
+  per-connect, or protocol-level (odd/raw/malformed frames, reconnects, socket
+  recycling, DP dumps, "X changed: …") goes to `this.log.debug`. If it can fire
+  more than a handful of times in normal operation, it's `debug`.
+- **`info`/`warn`/`error` are for what the user must see or act on**, and the
+  level must match real severity — a harmless condition (e.g. a cloud-fallback
+  failure while the device is reachable over the LAN) is not a `warn`/`error`.
+  Prefer one actionable line over a vague one; name the device.
+- **Never spam.** A condition that recurs on a timer or hot path must be
+  deduplicated (surface once, then drop repeats to `debug` until it changes) and
+  its retry backed off — see `TuyaCloudDevice._onConnectFailure` and the
+  discovery port-in-use guard for the pattern.
+- **Use the Homebridge logger** (`this.log` / `this.log.debug|info|warn|error`),
+  never `console.*`, in plugin/runtime code. (The standalone `bin/` CLIs are the
+  exception: their `console.*` is intentional user-facing output.)
+- **Logging must never throw and must never leak secrets** — don't dump a whole
+  config/props object (it carries the device's local `key`); log the id/name.
+
 ## Backwards compatibility (read before changing behavior)
 
 This is the most important rule in this repo. Users have working setups and
