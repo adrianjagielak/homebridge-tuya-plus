@@ -20,12 +20,23 @@ It helps in two situations:
 
 ## 2. Authorize the required API services
 
+There are two types of projects: `Custom` and `Smart Home`. The difference between them is:
+
+* The `Custom` project pulls devices from the project's assets.
+* The `Smart Home` project pulls devices from the user's home in the Tuya app.
+
+If you are a personal user and are unsure which one to choose, please use the Smart Home project.
+
 In the project, go to **Service API → Go to Authorize** and make sure these are subscribed (all free):
 
-* **IoT Core**
-* **Authorization**
-* **Smart Home Basic Service**
-* **Device Status Notification** ← needed for realtime MQTT updates
+* Authorization Token Management
+* Device Status Notification
+* IoT Core
+* IoT Video Live Stream (for cameras)
+* Industry Project Client Service (for the `Custom` project)
+* IR Control Hub Open Service (for IR devices)
+* Smart Home Scene Linkage (for scenes)
+* Smart Lock Open Service (for Lock devices)
 
 > **⚠️Remember to extend the API trial period every 6 months here: [Tuya IoT Platform > Cloud > Cloud Services > IoT Core](https://iot.tuya.com/cloud/products/detail?abilityId=1442730014117204014&id=p1668587814138nv4h3n&abilityAuth=0&tab=1) (the first-time subscription only gives you 1 month).**
 

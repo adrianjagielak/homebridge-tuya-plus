@@ -97,12 +97,6 @@ describe('TuyaLan — cloud session setup', () => {
         expect(TuyaCloudApi.mock.calls[0][0]).toMatchObject({accessId: 'aid', accessKey: 'akey', region: 'eu'});
         expect(TuyaCloudMessaging).toHaveBeenCalledTimes(1);
     });
-
-    test('realtime:false skips the MQTT session', () => {
-        run({cloud: {...CLOUD, realtime: false}, devices: [SW()]});
-        expect(TuyaCloudApi).toHaveBeenCalledTimes(1);
-        expect(TuyaCloudMessaging).not.toHaveBeenCalled();
-    });
 });
 
 describe('TuyaLan — cloud participation', () => {

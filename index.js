@@ -40,328 +40,459 @@ const PLATFORM_NAME = 'TuyaLan';
 const UUID_SEED = 'homebridge-tuya';
 const DEFAULT_DISCOVER_TIMEOUT = 60000;
 
-// Lenient boolean coercion (matches BaseAccessory._coerceBoolean) so config
-// values like true / "true" / 1 all read as true.
-const coerceBoolean = (b, df = false) =>
-    typeof b === 'boolean' ? b :
-    typeof b === 'string' ? b.toLowerCase().trim() === 'true' :
-    typeof b === 'number' ? b !== 0 : df;
-
 const CLASS_DEF = {
-    outlet: OutletAccessory,
-    simplelight: SimpleLightAccessory,
-    rgbtwlight: RGBTWLightAccessory,
-    rgbtwoutlet: RGBTWOutletAccessory,
-    twlight: TWLightAccessory,
-    multioutlet: MultiOutletAccessory,
-    custommultioutlet: CustomMultiOutletAccessory,
-    airconditioner: AirConditionerAccessory,
-    airpurifier: AirPurifierAccessory,
-    dehumidifier: DehumidifierAccessory,
-    convector: ConvectorAccessory,
-    garagedoor: GarageDoorAccessory,
-    simplegaragedoor: SimpleGarageDoorAccessory,
-    simpledimmer: SimpleDimmerAccessory,
-    wleddimmer: WledDimmerAccessory,
-    simpledimmer2: SimpleDimmer2Accessory,
-    simpleblinds: SimpleBlindsAccessory,
-    simpleheater: SimpleHeaterAccessory,
-    switch: SwitchAccessory,
-    fan: SimpleFanAccessory,
-    fanlight: SimpleFanLightAccessory,
-    watervalve: ValveAccessory,
-    irrigationsystem: IrrigationSystemAccessory,
-    oildiffuser: OilDiffuserAccessory,
-    doorbell: DoorbellAccessory,
-    verticalblindswithtilt: VerticalBlindsWithTilt,
-    percentblinds: PercentBlindsAccessory
+  outlet: OutletAccessory,
+  simplelight: SimpleLightAccessory,
+  rgbtwlight: RGBTWLightAccessory,
+  rgbtwoutlet: RGBTWOutletAccessory,
+  twlight: TWLightAccessory,
+  multioutlet: MultiOutletAccessory,
+  custommultioutlet: CustomMultiOutletAccessory,
+  airconditioner: AirConditionerAccessory,
+  airpurifier: AirPurifierAccessory,
+  dehumidifier: DehumidifierAccessory,
+  convector: ConvectorAccessory,
+  garagedoor: GarageDoorAccessory,
+  simplegaragedoor: SimpleGarageDoorAccessory,
+  simpledimmer: SimpleDimmerAccessory,
+  wleddimmer: WledDimmerAccessory,
+  simpledimmer2: SimpleDimmer2Accessory,
+  simpleblinds: SimpleBlindsAccessory,
+  simpleheater: SimpleHeaterAccessory,
+  switch: SwitchAccessory,
+  fan: SimpleFanAccessory,
+  fanlight: SimpleFanLightAccessory,
+  watervalve: ValveAccessory,
+  irrigationsystem: IrrigationSystemAccessory,
+  oildiffuser: OilDiffuserAccessory,
+  doorbell: DoorbellAccessory,
+  verticalblindswithtilt: VerticalBlindsWithTilt,
+  percentblinds: PercentBlindsAccessory,
 };
 
-let Characteristic, Formats, Perms, Categories, PlatformAccessory, Service, AdaptiveLightingController, UUID;
+let Characteristic,
+  Formats,
+  Perms,
+  Categories,
+  PlatformAccessory,
+  Service,
+  AdaptiveLightingController,
+  UUID;
 
-module.exports = function(homebridge) {
-    ({
-        platformAccessory: PlatformAccessory,
-        hap: {Characteristic, Formats, Perms, Categories, Service, AdaptiveLightingController, uuid: UUID}
-    } = homebridge);
+module.exports = function (homebridge) {
+  ({
+    platformAccessory: PlatformAccessory,
+    hap: {
+      Characteristic,
+      Formats,
+      Perms,
+      Categories,
+      Service,
+      AdaptiveLightingController,
+      uuid: UUID,
+    },
+  } = homebridge);
 
-    homebridge.registerPlatform(PLUGIN_NAME, PLATFORM_NAME, TuyaLan, true);
+  homebridge.registerPlatform(PLUGIN_NAME, PLATFORM_NAME, TuyaLan, true);
 };
 
 class TuyaLan {
-    constructor(...props) {
-        [this.log, this.config, this.api] = [...props];
+  constructor(...props) {
+    [this.log, this.config, this.api] = [...props];
 
-        this.cachedAccessories = new Map();
-        // One TuyaDevice per configured device, keyed by Tuya id, so discovery can
-        // hand each its LAN target once it's found on the network.
-        this.tuyaDevices = new Map();
-        // A SINGLE shared Tuya Cloud session (OpenAPI token + realtime MQTT) for the
-        // whole platform — the global fallback every device can lean on. Stays null
-        // unless cloud credentials are configured.
-        this.cloudApi = null;
-        this.cloudMessaging = null;
-        this.api.hap.EnergyCharacteristics = require('./lib/EnergyCharacteristics')(this.api.hap);
+    this.cachedAccessories = new Map();
+    // One TuyaDevice per configured device, keyed by Tuya id, so discovery can
+    // hand each its LAN target once it's found on the network.
+    this.tuyaDevices = new Map();
+    // A SINGLE shared Tuya Cloud session (OpenAPI token + realtime MQTT) for the
+    // whole platform — the global fallback every device can lean on. Stays null
+    // unless cloud credentials are configured.
+    this.cloudApi = null;
+    this.cloudMessaging = null;
+    this.api.hap.EnergyCharacteristics = require('./lib/EnergyCharacteristics')(
+      this.api.hap,
+    );
 
-        if(!this.config || !this.config.devices) {
-            this.log("No devices found. Check that you have specified them in your config.json file.");
-            return false;
-        }
-
-        this._expectedUUIDs = this.config.devices.map(device => UUID.generate(UUID_SEED +(device.fake ? ':fake:' : ':') + device.id));
-
-        this.api.on('didFinishLaunching', () => {
-            this.discoverDevices();
-        });
+    if (!this.config || !this.config.devices) {
+      this.log(
+        'No devices found. Check that you have specified them in your config.json file.',
+      );
+      return false;
     }
 
-    discoverDevices() {
-        // Bring up the single shared cloud session first, so every device that opts
-        // into (or falls back to) the cloud shares one token and one MQTT stream.
-        this._setupCloudSession();
+    this._expectedUUIDs = this.config.devices.map((device) =>
+      UUID.generate(UUID_SEED + (device.fake ? ':fake:' : ':') + device.id),
+    );
 
-        const lanDeviceIds = [];      // ids we still want to find on the LAN
-        const connectedDevices = [];  // ids discovered on the LAN
-        const fakeDevices = [];
-        const seenUUIDs = new Set();  // accessory UUIDs already configured this run
+    this.api.on('didFinishLaunching', () => {
+      this.discoverDevices();
+    });
+  }
 
-        this.config.devices.forEach(device => {
-            try {
-                device.id = ('' + device.id).trim();
-                // Cloud-only devices don't need a local key; only trim when present.
-                if (device.key != null) device.key = ('' + device.key).trim();
-                device.type = ('' + device.type).trim();
+  discoverDevices() {
+    // Bring up the single shared cloud session first, so every device that opts
+    // into (or falls back to) the cloud shares one token and one MQTT stream.
+    this._setupCloudSession();
 
-                device.ip = ('' + (device.ip || '')).trim();
-            } catch(ex) {}
+    const lanDeviceIds = []; // ids we still want to find on the LAN
+    const connectedDevices = []; // ids discovered on the LAN
+    const fakeDevices = [];
+    const seenUUIDs = new Set(); // accessory UUIDs already configured this run
 
-            if (!device.type) return this.log.error('%s (%s) doesn\'t have a type defined.', device.name || 'Unnamed device', device.id);
-            if (!CLASS_DEF[device.type.toLowerCase()]) return this.log.error('%s (%s) doesn\'t have a valid type defined.', device.name || 'Unnamed device', device.id);
+    this.config.devices.forEach((device) => {
+      try {
+        device.id = ('' + device.id).trim();
+        // Cloud-only devices don't need a local key; only trim when present.
+        if (device.key != null) device.key = ('' + device.key).trim();
+        device.type = ('' + device.type).trim();
 
-            // Two config entries that resolve to the same accessory UUID (the same
-            // Tuya id, real or fake) make addAccessory process that UUID twice. The
-            // second pass reads back the accessory wrapper the first pass cached
-            // instead of a PlatformAccessory and crashes the child bridge while
-            // trying to unregister it. Keep the first entry; skip the rest.
-            const uuid = UUID.generate(UUID_SEED + (device.fake ? ':fake:' : ':') + device.id);
-            if (seenUUIDs.has(uuid)) return this.log.warn('%s (%s) is configured more than once; ignoring the duplicate entry.', device.name || 'Unnamed device', device.id);
-            seenUUIDs.add(uuid);
+        device.ip = ('' + (device.ip || '')).trim();
+      } catch (ex) {}
 
-            if (device.fake) {
-                fakeDevices.push({name: device.id.slice(8), ...device});
-                return;
-            }
+      if (!device.type)
+        return this.log.error(
+          "%s (%s) doesn't have a type defined.",
+          device.name || 'Unnamed device',
+          device.id,
+        );
+      if (!CLASS_DEF[device.type.toLowerCase()])
+        return this.log.error(
+          "%s (%s) doesn't have a valid type defined.",
+          device.name || 'Unnamed device',
+          device.id,
+        );
 
-            const tuyaDevice = this._createDevice({name: device.id.slice(8), ...device});
-            this.tuyaDevices.set(device.id, tuyaDevice);
-            this.addAccessory(tuyaDevice);
+      // Two config entries that resolve to the same accessory UUID (the same
+      // Tuya id, real or fake) make addAccessory process that UUID twice. The
+      // second pass reads back the accessory wrapper the first pass cached
+      // instead of a PlatformAccessory and crashes the child bridge while
+      // trying to unregister it. Keep the first entry; skip the rest.
+      const uuid = UUID.generate(
+        UUID_SEED + (device.fake ? ':fake:' : ':') + device.id,
+      );
+      if (seenUUIDs.has(uuid))
+        return this.log.warn(
+          '%s (%s) is configured more than once; ignoring the duplicate entry.',
+          device.name || 'Unnamed device',
+          device.id,
+        );
+      seenUUIDs.add(uuid);
 
-            // A device with a local key can be reached on the LAN, so it wants
-            // discovery; the cloud, when configured, is its fallback. A device with
-            // no key is cloud-only (e.g. a battery-powered "sleepy" unit) and relies
-            // on the cloud session to be reachable at all.
-            if (device.key) lanDeviceIds.push(device.id);
-            else if (!this.cloudApi) this.log.error('%s (%s) has no local key and no Tuya Cloud session is configured, so it can\'t be reached. Add a key for LAN control, or a top-level "cloud" block.', tuyaDevice.context.name, device.id);
-        });
+      if (device.fake) {
+        fakeDevices.push({ name: device.id.slice(8), ...device });
+        return;
+      }
 
-        fakeDevices.forEach(config => {
-            this.log.info('Adding fake device: %s', config.name);
-            this.addAccessory(new TuyaAccessory({
-                ...config,
-                log: this.log,
-                UUID: UUID.generate(UUID_SEED + ':fake:' + config.id),
-                connect: false
-            }));
-        });
+      const tuyaDevice = this._createDevice({
+        name: device.id.slice(8),
+        ...device,
+      });
+      this.tuyaDevices.set(device.id, tuyaDevice);
+      this.addAccessory(tuyaDevice);
 
-        if (lanDeviceIds.length === 0) {
-            if (this.tuyaDevices.size === 0 && fakeDevices.length === 0) this.log.error('No valid configured devices found.');
-            return; // cloud-only (or empty) configuration: nothing to discover over the LAN
-        }
+      // A device with a local key can be reached on the LAN, so it wants
+      // discovery; the cloud, when configured, is its fallback. A device with
+      // no key is cloud-only (e.g. a battery-powered "sleepy" unit) and relies
+      // on the cloud session to be reachable at all.
+      if (device.key) lanDeviceIds.push(device.id);
+      else if (!this.cloudApi)
+        this.log.error(
+          '%s (%s) has no local key and no Tuya Cloud session is configured, so it can\'t be reached. Add a key for LAN control, or a top-level "cloud" block.',
+          tuyaDevice.context.name,
+          device.id,
+        );
+    });
 
-        this.log.info('Starting discovery...');
+    fakeDevices.forEach((config) => {
+      this.log.info('Adding fake device: %s', config.name);
+      this.addAccessory(
+        new TuyaAccessory({
+          ...config,
+          log: this.log,
+          UUID: UUID.generate(UUID_SEED + ':fake:' + config.id),
+          connect: false,
+        }),
+      );
+    });
 
-        TuyaDiscovery.start({ids: lanDeviceIds, log: this.log})
-            .on('discover', config => {
-                if (!config || !config.id) return;
-                const tuyaDevice = this.tuyaDevices.get(config.id);
-                if (!tuyaDevice) return this.log.warn('Discovered a device that has not been configured yet (%s@%s).', config.id, config.ip);
-                if (connectedDevices.includes(config.id)) return;
-
-                connectedDevices.push(config.id);
-
-                this.log.info('Discovered %s (%s) identified as %s (%s)', tuyaDevice.context.name, config.id, tuyaDevice.context.type, config.version);
-
-                // The version broadcast by the device wins over a configured `version`,
-                // but `forceVersion` overrides everything; attachLan applies that order.
-                tuyaDevice.attachLan({ip: config.ip, version: config.version});
-            });
-
-        setTimeout(() => {
-            lanDeviceIds.forEach(deviceId => {
-                if (connectedDevices.includes(deviceId)) return;
-
-                const tuyaDevice = this.tuyaDevices.get(deviceId);
-                if (!tuyaDevice) return;
-
-                if (tuyaDevice.context.ip) {
-                    this.log.info('Failed to discover %s (%s) in time but will connect via %s.', tuyaDevice.context.name, deviceId, tuyaDevice.context.ip);
-                    tuyaDevice.attachLan({ip: tuyaDevice.context.ip});
-                } else if (tuyaDevice.cloud) {
-                    this.log.info('Failed to discover %s (%s) on the LAN; it will run over the Tuya Cloud fallback.', tuyaDevice.context.name, deviceId);
-                } else {
-                    this.log.warn('Failed to discover %s (%s) in time but will keep looking.', tuyaDevice.context.name, deviceId);
-                }
-            });
-        }, this.config.discoverTimeout ?? DEFAULT_DISCOVER_TIMEOUT);
+    if (lanDeviceIds.length === 0) {
+      if (this.tuyaDevices.size === 0 && fakeDevices.length === 0)
+        this.log.error('No valid configured devices found.');
+      return; // cloud-only (or empty) configuration: nothing to discover over the LAN
     }
 
-    /* ------------------------------------------------------------------ *
-     *  Tuya Cloud — a single, global fallback session.
-     *
-     *  This plugin stays LAN-first: every device is controlled locally when it
-     *  can be. When a top-level `cloud` block is configured, the plugin keeps one
-     *  shared Tuya Cloud session alive in the background, and every device gains a
-     *  transparent cloud fallback for the moments the LAN can't be reached (a
-     *  flaky connection, or a battery-powered "sleepy" device that never appears
-     *  on the LAN at all). It's all opt-in — without `cloud`, nothing here runs.
-     * ------------------------------------------------------------------ */
+    this.log.info('Starting discovery...');
 
-    _setupCloudSession() {
-        const cloudCfg = (this.config.cloud && typeof this.config.cloud === 'object') ? this.config.cloud : null;
-        if (!cloudCfg) return; // no cloud block: the plugin runs purely on the LAN
+    TuyaDiscovery.start({ ids: lanDeviceIds, log: this.log }).on(
+      'discover',
+      (config) => {
+        if (!config || !config.id) return;
+        const tuyaDevice = this.tuyaDevices.get(config.id);
+        if (!tuyaDevice)
+          return this.log.warn(
+            'Discovered a device that has not been configured yet (%s@%s).',
+            config.id,
+            config.ip,
+          );
+        if (connectedDevices.includes(config.id)) return;
 
-        if (!cloudCfg.accessId || !cloudCfg.accessKey) {
-            return this.log.error('A "cloud" block is present but is missing accessId/accessKey, so the Tuya Cloud fallback is disabled. See the wiki: Tuya Cloud Setup.');
-        }
+        connectedDevices.push(config.id);
 
-        this.cloudApi = new TuyaCloudApi({...cloudCfg, log: this.log});
+        this.log.info(
+          'Discovered %s (%s) identified as %s (%s)',
+          tuyaDevice.context.name,
+          config.id,
+          tuyaDevice.context.type,
+          config.version,
+        );
 
-        const realtime = cloudCfg.realtime === undefined ? true : coerceBoolean(cloudCfg.realtime, true);
-        this.cloudMessaging = realtime ? new TuyaCloudMessaging({api: this.cloudApi, log: this.log}) : null;
+        // The version broadcast by the device wins over a configured `version`,
+        // but `forceVersion` overrides everything; attachLan applies that order.
+        tuyaDevice.attachLan({ ip: config.ip, version: config.version });
+      },
+    );
 
-        this.log.info('Tuya Cloud fallback enabled via %s%s.', this.cloudApi.endpoint, this.cloudMessaging ? ' (with realtime updates)' : ' (realtime updates disabled)');
-    }
+    setTimeout(() => {
+      lanDeviceIds.forEach((deviceId) => {
+        if (connectedDevices.includes(deviceId)) return;
 
-    _createDevice(device) {
-        // The one shared cloud session, when configured, backs every device as its
-        // fallback. There is no per-device cloud configuration.
-        const usesCloud = !!this.cloudApi;
-        return new TuyaDevice({
-            ...device,
-            cloudApi: usesCloud ? this.cloudApi : undefined,
-            messaging: usesCloud ? this.cloudMessaging : undefined,
-            cloudStartDelay: usesCloud ? this._nextCloudStartDelay() : 0,
-            log: this.log,
-            UUID: UUID.generate(UUID_SEED + ':' + device.id),
-            connect: false
-        });
-    }
+        const tuyaDevice = this.tuyaDevices.get(deviceId);
+        if (!tuyaDevice) return;
 
-    // Spread the cloud devices' first reads over a few seconds so a large install
-    // doesn't fire dozens of OpenAPI calls at once and trip Tuya's per-second rate
-    // limit at startup.
-    _nextCloudStartDelay() {
-        this._cloudStartCount = (this._cloudStartCount || 0) + 1;
-        return Math.min(15000, (this._cloudStartCount - 1) * 300);
-    }
-
-    registerPlatformAccessories(platformAccessories) {
-        this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, Array.isArray(platformAccessories) ? platformAccessories : [platformAccessories]);
-    }
-
-    configureAccessory(accessory) {
-        // also checks null objects or empty config - this._expectedUUIDs
-        if (accessory instanceof PlatformAccessory && this._expectedUUIDs && this._expectedUUIDs.includes(accessory.UUID)) {
-            this.cachedAccessories.set(accessory.UUID, accessory);
-            accessory.services.forEach(service => {
-                if (service.UUID === Service.AccessoryInformation.UUID) return;
-                service.characteristics.some(characteristic => {
-                    if (!characteristic.props ||
-                        !Array.isArray(characteristic.props.perms) ||
-                        characteristic.props.perms.length !== 3 ||
-                        !(characteristic.props.perms.includes(Perms.WRITE) && characteristic.props.perms.includes(Perms.NOTIFY))
-                    ) return;
-
-                    this.log.info('Marked %s unreachable by faulting Service.%s.%s', accessory.displayName, service.displayName, characteristic.displayName);
-
-                    characteristic.updateValue(new Error('Unreachable'));
-                    return true;
-                });
-            });
+        if (tuyaDevice.context.ip) {
+          this.log.info(
+            'Failed to discover %s (%s) in time but will connect via %s.',
+            tuyaDevice.context.name,
+            deviceId,
+            tuyaDevice.context.ip,
+          );
+          tuyaDevice.attachLan({ ip: tuyaDevice.context.ip });
+        } else if (tuyaDevice.cloud) {
+          this.log.info(
+            'Failed to discover %s (%s) on the LAN; it will run over the Tuya Cloud fallback.',
+            tuyaDevice.context.name,
+            deviceId,
+          );
         } else {
-            /*
-             * Irrespective of this unregistering, Homebridge continues
-             * to "_prepareAssociatedHAPAccessory" and "addBridgedAccessory".
-             * This timeout will hopefully remove the accessory after that has happened.
-             */
-            setTimeout(() => {
-                this.removeAccessory(accessory);
-            }, 1000);
+          this.log.warn(
+            'Failed to discover %s (%s) in time but will keep looking.',
+            tuyaDevice.context.name,
+            deviceId,
+          );
         }
+      });
+    }, this.config.discoverTimeout ?? DEFAULT_DISCOVER_TIMEOUT);
+  }
+
+  /* ------------------------------------------------------------------ *
+   *  Tuya Cloud — a single, global fallback session.
+   *
+   *  This plugin stays LAN-first: every device is controlled locally when it
+   *  can be. When a top-level `cloud` block is configured, the plugin keeps one
+   *  shared Tuya Cloud session alive in the background, and every device gains a
+   *  transparent cloud fallback for the moments the LAN can't be reached (a
+   *  flaky connection, or a battery-powered "sleepy" device that never appears
+   *  on the LAN at all). It's all opt-in — without `cloud`, nothing here runs.
+   * ------------------------------------------------------------------ */
+
+  _setupCloudSession() {
+    const cloudCfg =
+      this.config.cloud && typeof this.config.cloud === 'object'
+        ? this.config.cloud
+        : null;
+    if (!cloudCfg) return; // no cloud block: the plugin runs purely on the LAN
+
+    if (!cloudCfg.accessId || !cloudCfg.accessKey) {
+      return this.log.error(
+        'A "cloud" block is present but is missing accessId/accessKey, so the Tuya Cloud fallback is disabled. See the wiki: Tuya Cloud Setup.',
+      );
     }
 
-    addAccessory(device) {
-        const deviceConfig = device.context;
-        const type = (deviceConfig.type || '').toLowerCase();
+    this.cloudApi = new TuyaCloudApi({ ...cloudCfg, log: this.log });
+    this.cloudMessaging = new TuyaCloudMessaging({
+      api: this.cloudApi,
+      log: this.log,
+    });
 
-        const Accessory = CLASS_DEF[type];
+    this.log.info(
+      'Tuya Cloud fallback enabled via %s.',
+      this.cloudApi.endpoint,
+    );
+  }
 
-        let accessory = this.cachedAccessories.get(deviceConfig.UUID),
-            isCached = true;
+  _createDevice(device) {
+    // The one shared cloud session, when configured, backs every device as its
+    // fallback. There is no per-device cloud configuration.
+    const usesCloud = !!this.cloudApi;
+    return new TuyaDevice({
+      ...device,
+      cloudApi: usesCloud ? this.cloudApi : undefined,
+      messaging: usesCloud ? this.cloudMessaging : undefined,
+      cloudStartDelay: usesCloud ? this._nextCloudStartDelay() : 0,
+      log: this.log,
+      UUID: UUID.generate(UUID_SEED + ':' + device.id),
+      connect: false,
+    });
+  }
 
-        const expectedCategory = Accessory.getCategory(Categories);
+  // Spread the cloud devices' first reads over a few seconds so a large install
+  // doesn't fire dozens of OpenAPI calls at once and trip Tuya's per-second rate
+  // limit at startup.
+  _nextCloudStartDelay() {
+    this._cloudStartCount = (this._cloudStartCount || 0) + 1;
+    return Math.min(15000, (this._cloudStartCount - 1) * 300);
+  }
 
-        // Only treat a cached accessory as a "different type" when we actually
-        // have a category to compare against. If getCategory() resolves to
-        // undefined (e.g. an unknown HAP category constant), HomeKit stores the
-        // accessory as Categories.OTHER, so an undefined expectation would never
-        // match and we would needlessly unregister & recreate the accessory on
-        // every restart — wiping its HomeKit identity (name, room, automations).
-        if (accessory && expectedCategory !== undefined && accessory.category !== expectedCategory) {
-            this.log.info("%s has a different type (%s vs %s)", accessory.displayName, accessory.category, expectedCategory);
-            this.removeAccessory(accessory);
-            accessory = null;
-        }
+  registerPlatformAccessories(platformAccessories) {
+    this.api.registerPlatformAccessories(
+      PLUGIN_NAME,
+      PLATFORM_NAME,
+      Array.isArray(platformAccessories)
+        ? platformAccessories
+        : [platformAccessories],
+    );
+  }
 
-        if (!accessory) {
-            accessory = new PlatformAccessory(deviceConfig.name, deviceConfig.UUID, expectedCategory);
-            accessory.getService(Service.AccessoryInformation)
-                .setCharacteristic(Characteristic.Manufacturer, deviceConfig.manufacturer || "Unknown")
-                .setCharacteristic(Characteristic.Model, deviceConfig.model || "Unknown")
-                .setCharacteristic(Characteristic.SerialNumber, deviceConfig.id.slice(8));
+  configureAccessory(accessory) {
+    // also checks null objects or empty config - this._expectedUUIDs
+    if (
+      accessory instanceof PlatformAccessory &&
+      this._expectedUUIDs &&
+      this._expectedUUIDs.includes(accessory.UUID)
+    ) {
+      this.cachedAccessories.set(accessory.UUID, accessory);
+      accessory.services.forEach((service) => {
+        if (service.UUID === Service.AccessoryInformation.UUID) return;
+        service.characteristics.some((characteristic) => {
+          if (
+            !characteristic.props ||
+            !Array.isArray(characteristic.props.perms) ||
+            characteristic.props.perms.length !== 3 ||
+            !(
+              characteristic.props.perms.includes(Perms.WRITE) &&
+              characteristic.props.perms.includes(Perms.NOTIFY)
+            )
+          )
+            return;
 
-            isCached = false;
-        }
+          this.log.info(
+            'Marked %s unreachable by faulting Service.%s.%s',
+            accessory.displayName,
+            service.displayName,
+            characteristic.displayName,
+          );
 
-        if (accessory && accessory.displayName !== deviceConfig.name) {
-            this.log.info(
-                "Configuration name %s differs from cached displayName %s. Updating cached displayName to %s ",
-                deviceConfig.name, accessory.displayName, deviceConfig.name);
-            accessory.displayName = deviceConfig.name;
-        }
+          characteristic.updateValue(new Error('Unreachable'));
+          return true;
+        });
+      });
+    } else {
+      /*
+       * Irrespective of this unregistering, Homebridge continues
+       * to "_prepareAssociatedHAPAccessory" and "addBridgedAccessory".
+       * This timeout will hopefully remove the accessory after that has happened.
+       */
+      setTimeout(() => {
+        this.removeAccessory(accessory);
+      }, 1000);
+    }
+  }
 
-        this.cachedAccessories.set(deviceConfig.UUID, new Accessory(this, accessory, device, !isCached));
+  addAccessory(device) {
+    const deviceConfig = device.context;
+    const type = (deviceConfig.type || '').toLowerCase();
+
+    const Accessory = CLASS_DEF[type];
+
+    let accessory = this.cachedAccessories.get(deviceConfig.UUID),
+      isCached = true;
+
+    const expectedCategory = Accessory.getCategory(Categories);
+
+    // Only treat a cached accessory as a "different type" when we actually
+    // have a category to compare against. If getCategory() resolves to
+    // undefined (e.g. an unknown HAP category constant), HomeKit stores the
+    // accessory as Categories.OTHER, so an undefined expectation would never
+    // match and we would needlessly unregister & recreate the accessory on
+    // every restart — wiping its HomeKit identity (name, room, automations).
+    if (
+      accessory &&
+      expectedCategory !== undefined &&
+      accessory.category !== expectedCategory
+    ) {
+      this.log.info(
+        '%s has a different type (%s vs %s)',
+        accessory.displayName,
+        accessory.category,
+        expectedCategory,
+      );
+      this.removeAccessory(accessory);
+      accessory = null;
     }
 
-    removeAccessory(homebridgeAccessory) {
-        if (!homebridgeAccessory) return;
+    if (!accessory) {
+      accessory = new PlatformAccessory(
+        deviceConfig.name,
+        deviceConfig.UUID,
+        expectedCategory,
+      );
+      accessory
+        .getService(Service.AccessoryInformation)
+        .setCharacteristic(
+          Characteristic.Manufacturer,
+          deviceConfig.manufacturer || 'Unknown',
+        )
+        .setCharacteristic(
+          Characteristic.Model,
+          deviceConfig.model || 'Unknown',
+        )
+        .setCharacteristic(
+          Characteristic.SerialNumber,
+          deviceConfig.id.slice(8),
+        );
 
-        // Only real PlatformAccessory instances can be unregistered. cachedAccessories
-        // also holds accessory wrappers (set by addAccessory), and Homebridge throws a
-        // fatal TypeError when handed anything else, taking down the whole child bridge.
-        // Guard against it rather than trust every caller.
-        if (!(homebridgeAccessory instanceof PlatformAccessory)) {
-            return this.log.warn('Skipped unregistering %s: not a PlatformAccessory.', homebridgeAccessory.displayName);
-        }
-
-        this.log.warn('Unregistering', homebridgeAccessory.displayName);
-
-        this.cachedAccessories.delete(homebridgeAccessory.UUID);
-        this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [homebridgeAccessory]);
+      isCached = false;
     }
 
-    removeAccessoryByUUID(uuid) {
-        if (uuid) this.removeAccessory(this.cachedAccessories.get(uuid));
+    if (accessory && accessory.displayName !== deviceConfig.name) {
+      this.log.info(
+        'Configuration name %s differs from cached displayName %s. Updating cached displayName to %s ',
+        deviceConfig.name,
+        accessory.displayName,
+        deviceConfig.name,
+      );
+      accessory.displayName = deviceConfig.name;
     }
+
+    this.cachedAccessories.set(
+      deviceConfig.UUID,
+      new Accessory(this, accessory, device, !isCached),
+    );
+  }
+
+  removeAccessory(homebridgeAccessory) {
+    if (!homebridgeAccessory) return;
+
+    // Only real PlatformAccessory instances can be unregistered. cachedAccessories
+    // also holds accessory wrappers (set by addAccessory), and Homebridge throws a
+    // fatal TypeError when handed anything else, taking down the whole child bridge.
+    // Guard against it rather than trust every caller.
+    if (!(homebridgeAccessory instanceof PlatformAccessory)) {
+      return this.log.warn(
+        'Skipped unregistering %s: not a PlatformAccessory.',
+        homebridgeAccessory.displayName,
+      );
+    }
+
+    this.log.warn('Unregistering', homebridgeAccessory.displayName);
+
+    this.cachedAccessories.delete(homebridgeAccessory.UUID);
+    this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [
+      homebridgeAccessory,
+    ]);
+  }
+
+  removeAccessoryByUUID(uuid) {
+    if (uuid) this.removeAccessory(this.cachedAccessories.get(uuid));
+  }
 }

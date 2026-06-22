@@ -22,7 +22,7 @@
       "cloud": {
         "type": "object",
         "title": "Tuya Cloud fallback (optional)",
-        "description": "This plugin is LAN-first — every device is controlled locally. Add your Tuya Cloud project credentials here and the plugin keeps one Cloud session running in the background as a transparent fallback for every device: each accessory tries the LAN first, and only falls back to the cloud when it can't be reached locally — a flaky LAN moment, or a battery-powered 'sleepy' device that never appears on the LAN. It's opt-in and local is always preferred. Create a free Cloud project at iot.tuya.com. See the wiki for step-by-step setup.",
+        "description": "<a href='https://github.com/adrianjagielak/homebridge-tuya-plus/blob/main/wiki/Tuya-Cloud-Setup.md'>Tuya Cloud API Setup</a>.",
         "properties": {
           "accessId": {
             "type": "string",
@@ -69,12 +69,6 @@
               { "title": "Tuya Smart", "enum": ["tuyaSmart"] },
               { "title": "Smart Life", "enum": ["smartlife"] }
             ]
-          },
-          "realtime": {
-            "type": "boolean",
-            "title": "Realtime updates (MQTT)",
-            "default": true,
-            "description": "Receive instant updates over Tuya's MQTT message service (uses the 'mqtt' package, installed automatically). If disabled, devices stay controllable and show their state at startup, but external changes (physical buttons, the device's own timers) won't be reflected until restart."
           }
         }
       },
@@ -96,7 +90,7 @@
                 {
                   "title": "Switch Gang / Basic Switch",
                   "enum": ["Switch"]
-                },                
+                },
                 {
                   "title": "Smart Plug / Barely Smart Power Strip",
                   "enum": ["Outlet"]
@@ -311,7 +305,7 @@
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['WledDimmer'].includes(model.devices[arrayIndices].type);"
               }
-            },            
+            },
             "dpColorTemperature": {
               "type": "integer",
               "placeholder": "3",
@@ -754,9 +748,21 @@
               "items": {
                 "type": "object",
                 "properties": {
-                  "name": { "type": "string", "title": "Zone name", "placeholder": "Lawn" },
-                  "dp": { "type": ["integer", "string"], "title": "Data-point (numeric id, or cloud code)", "placeholder": "1 or switch_1" },
-                  "defaultDuration": { "type": "integer", "title": "Default run time (seconds, 0 = run indefinitely)", "placeholder": 600 }
+                  "name": {
+                    "type": "string",
+                    "title": "Zone name",
+                    "placeholder": "Lawn"
+                  },
+                  "dp": {
+                    "type": ["integer", "string"],
+                    "title": "Data-point (numeric id, or cloud code)",
+                    "placeholder": "1 or switch_1"
+                  },
+                  "defaultDuration": {
+                    "type": "integer",
+                    "title": "Default run time (seconds, 0 = run indefinitely)",
+                    "placeholder": 600
+                  }
                 }
               },
               "condition": {
