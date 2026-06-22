@@ -413,7 +413,10 @@ class TuyaLan {
           )
             return;
 
-          this.log.info(
+          // Each cached accessory starts faulted ("No Response") until its
+          // device connects — expected, and once per accessory at startup, so
+          // it belongs at debug rather than as a wall of cryptic info lines.
+          this.log.debug(
             'Marked %s unreachable by faulting Service.%s.%s',
             accessory.displayName,
             service.displayName,

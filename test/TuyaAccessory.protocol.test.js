@@ -607,9 +607,10 @@ describe('graceful disconnect handling', () => {
         jest.advanceTimersByTime(1000);
         expect(pingErrors).toHaveLength(0);
 
-        // The log reflects a clean disconnect, never a ping failure.
-        expect(device.log.info).toHaveBeenCalledWith('Disconnected from', device.context.name);
-        const logged = device.log.info.mock.calls.flat().join(' ');
+        // The log reflects a clean disconnect, never a ping failure. (A device
+        // recycling its socket is routine, so the disconnect is logged at debug.)
+        expect(device.log.debug).toHaveBeenCalledWith('Disconnected from', device.context.name);
+        const logged = device.log.debug.mock.calls.flat().join(' ');
         expect(logged).not.toMatch(/ERR_PING_TIMED_OUT/);
     });
 
