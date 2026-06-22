@@ -131,6 +131,20 @@ devices already paired in HomeKit; a careless change can break them silently.
   routing.
 - When a change must alter behavior, make it opt-in.
 
+## Debug config block
+
+The platform reads an **undocumented** top-level `debug` object from the config
+(see `_debugConfig()` in `index.js`). It holds dev/test-only switches and is
+deliberately **kept out of `config.schema.json`** so it never appears in the
+Homebridge UI. Treat it as the one place such switches belong; add new ones as
+optional, off-by-default flags read through `_debugConfig()` and coerced with
+`coerceBoolean`.
+
+- `debug.forceCloudFallback` — pretend LAN discovery fails for every device, so
+  the whole platform runs over the Tuya Cloud fallback. Lets the cloud path be
+  exercised end-to-end without taking devices off the LAN (needs a configured
+  `cloud` block to be useful).
+
 ## Git & PR workflow
 
 - Develop on the branch you've been assigned; never push to `main` directly.
