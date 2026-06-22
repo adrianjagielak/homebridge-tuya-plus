@@ -201,4 +201,104 @@ describe('TuyaCloudDevice', () => {
         await new Promise(r => setImmediate(r));
         expect(api.getStatus).toHaveBeenCalledWith('dev1');
     });
+
+    describe('connect-failure handling (no log spam)', () => {
+        afterEach(() => jest.restoreAllMocks());
+
+        test('a repeated failure is surfaced once, suppressed after, and backs off', () => {
+            jest.useFakeTimers();
+            try {
+                const dev = makeDevice(makeApi(), null, {key: 'abc'}); // LAN-capable → fallback
+                const warn = jest.spyOn(log, 'warn');
+                const debug = jest.spyOn(log, 'debug');
+                const err = new Error('GET /v1.0/devices/dev1/status failed: permission deny (code 1106)');
+
+                dev._onConnectFailure(err);
+                expect(warn).toHaveBeenCalledTimes(1);
+                expect(warn.mock.calls[0][0]).toContain('permission deny (code 1106)');
+                expect(dev._retryDelay).toBe(30000);
+
+                dev._onConnectFailure(err); // identical → not surfaced again, just debug + backoff
+                expect(warn).toHaveBeenCalledTimes(1);
+                expect(debug).toHaveBeenCalledWith(expect.stringContaining('still failing'));
+                expect(dev._retryDelay).toBe(60000);
+
+                dev._onConnectFailure(err);
+                expect(dev._retryDelay).toBe(120000);
+            } finally {
+                jest.useRealTimers();
+            }
+        });
+
+        test('a cloud-only device (no key) surfaces the failure at error level', () => {
+            jest.useFakeTimers();
+            try {
+                const dev = makeDevice(makeApi()); // no key → cloud is the only path
+                const error = jest.spyOn(log, 'error');
+                const warn = jest.spyOn(log, 'warn');
+
+                dev._onConnectFailure(new Error('permission deny (code 1106)'));
+                expect(warn).not.toHaveBeenCalled();
+                expect(error).toHaveBeenCalledTimes(1);
+                expect(error.mock.calls[0][0]).toContain('cloud-only');
+            } finally {
+                jest.useRealTimers();
+            }
+        });
+
+        test('a different error message is surfaced again, not suppressed', () => {
+            jest.useFakeTimers();
+            try {
+                const dev = makeDevice(makeApi(), null, {key: 'abc'});
+                const warn = jest.spyOn(log, 'warn');
+
+                dev._onConnectFailure(new Error('permission deny (code 1106)'));
+                dev._onConnectFailure(new Error('request timed out'));
+                expect(warn).toHaveBeenCalledTimes(2);
+            } finally {
+                jest.useRealTimers();
+            }
+        });
+
+        test('backoff is capped at 30 minutes', () => {
+            jest.useFakeTimers();
+            try {
+                const dev = makeDevice(makeApi(), null, {key: 'abc'});
+                jest.spyOn(log, 'warn');
+                jest.spyOn(log, 'debug');
+                const err = new Error('permission deny (code 1106)');
+
+                for (let i = 0; i < 20; i++) dev._onConnectFailure(err);
+                expect(dev._retryDelay).toBe(1800000);
+            } finally {
+                jest.useRealTimers();
+            }
+        });
+
+        test('reconnecting after a failure logs recovery once and resets backoff', async () => {
+            const dev = makeDevice(makeApi(), null, {key: 'abc'});
+            dev._lastConnectError = 'permission deny (code 1106)';
+            dev._retryDelay = 240000;
+            const info = jest.spyOn(log, 'info');
+
+            await dev._connect(); // mocked api resolves → success path runs
+
+            expect(dev._lastConnectError).toBeNull();
+            expect(dev._retryDelay).toBe(0);
+            expect(info).toHaveBeenCalledWith(expect.stringContaining('connection restored'));
+        });
+
+        test('a stopped device does not schedule another retry', () => {
+            jest.useFakeTimers();
+            try {
+                const dev = makeDevice(makeApi(), null, {key: 'abc'});
+                jest.spyOn(log, 'warn');
+                dev.stop();
+                dev._onConnectFailure(new Error('permission deny (code 1106)'));
+                expect(dev._retryTimer).toBeNull();
+            } finally {
+                jest.useRealTimers();
+            }
+        });
+    });
 });
