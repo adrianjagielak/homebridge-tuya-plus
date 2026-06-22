@@ -79,6 +79,20 @@ let Characteristic,
   AdaptiveLightingController,
   UUID;
 
+// Lenient boolean coercion for platform-level config flags, mirroring
+// BaseAccessory._coerceBoolean so the same true / 'true' / 1 spellings users
+// already use on device options are accepted on top-level options too.
+function coerceBoolean(value, defaultValue) {
+  const df = defaultValue || false;
+  return typeof value === 'boolean'
+    ? value
+    : typeof value === 'string'
+      ? value.toLowerCase().trim() === 'true'
+      : typeof value === 'number'
+        ? value !== 0
+        : df;
+}
+
 module.exports = function (homebridge) {
   ({
     platformAccessory: PlatformAccessory,
@@ -221,6 +235,37 @@ class TuyaLan {
       return; // cloud-only (or empty) configuration: nothing to discover over the LAN
     }
 
+    // Debug switch: pretend LAN discovery fails for every device so the whole
+    // platform runs over the Tuya Cloud fallback — a way to exercise the cloud
+    // path end-to-end without taking devices off the LAN. We simply never start
+    // discovery (and never attach a LAN backend), leaving the cloud session each
+    // device was already wired with as its only transport. Useless without a
+    // configured cloud session — the affected devices then have no transport at
+    // all, so say so per device rather than failing silently.
+    if (coerceBoolean(this._debugConfig().forceCloudFallback)) {
+      this.log.warn(
+        'debug.forceCloudFallback is set: skipping LAN discovery; every device is forced onto the Tuya Cloud fallback.',
+      );
+      lanDeviceIds.forEach((deviceId) => {
+        const tuyaDevice = this.tuyaDevices.get(deviceId);
+        if (!tuyaDevice) return;
+        if (tuyaDevice.cloud) {
+          this.log.info(
+            'Forcing %s (%s) onto the Tuya Cloud fallback (debug.forceCloudFallback).',
+            tuyaDevice.context.name,
+            deviceId,
+          );
+        } else {
+          this.log.error(
+            'debug.forceCloudFallback is set but %s (%s) has no Tuya Cloud session, so it can\'t be reached.',
+            tuyaDevice.context.name,
+            deviceId,
+          );
+        }
+      });
+      return;
+    }
+
     this.log.info('Starting discovery...');
 
     TuyaDiscovery.start({ ids: lanDeviceIds, log: this.log }).on(
@@ -277,6 +322,17 @@ class TuyaLan {
         }
       });
     }, this.config.discoverTimeout ?? DEFAULT_DISCOVER_TIMEOUT);
+  }
+
+  // The undocumented top-level `debug` block holds switches that only matter
+  // when developing or testing the plugin (e.g. forcing the Tuya Cloud path).
+  // It is intentionally absent from config.schema.json so it never surfaces in
+  // the Homebridge UI. Always returns an object so callers can read a flag
+  // without first guarding for the block's presence.
+  _debugConfig() {
+    return this.config.debug && typeof this.config.debug === 'object'
+      ? this.config.debug
+      : {};
   }
 
   // A device showed up on the LAN that isn't in the user's config. When the

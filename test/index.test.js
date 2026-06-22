@@ -136,6 +136,36 @@ describe('TuyaLan — discovery routing', () => {
     });
 });
 
+describe('TuyaLan — debug.forceCloudFallback', () => {
+    test('skips LAN discovery so a keyed device never attaches a LAN backend', () => {
+        run({cloud: CLOUD, debug: {forceCloudFallback: true}, devices: [SW()]});
+        expect(TuyaDiscovery.start).not.toHaveBeenCalled();
+        expect(TuyaDiscovery.on).not.toHaveBeenCalled();
+        expect(instanceFor('bf11111111111111').attachLan).not.toHaveBeenCalled();
+    });
+
+    test('the forced device keeps its shared cloud session as its only transport', () => {
+        run({cloud: CLOUD, debug: {forceCloudFallback: true}, devices: [SW()]});
+        expect(propsFor('bf11111111111111').cloudApi).toBeDefined();
+    });
+
+    test('off (or absent) leaves discovery running as usual', () => {
+        run({cloud: CLOUD, debug: {forceCloudFallback: false}, devices: [SW()]});
+        expect(TuyaDiscovery.start).toHaveBeenCalledTimes(1);
+    });
+
+    test('lenient boolean spellings are accepted', () => {
+        run({cloud: CLOUD, debug: {forceCloudFallback: 'true'}, devices: [SW()]});
+        expect(TuyaDiscovery.start).not.toHaveBeenCalled();
+    });
+
+    test('without a cloud session, the unreachable device is reported as an error', () => {
+        const platform = run({debug: {forceCloudFallback: true}, devices: [SW()]});
+        expect(TuyaDiscovery.start).not.toHaveBeenCalled();
+        expect(platform.log.error).toHaveBeenCalled();
+    });
+});
+
 describe('TuyaLan — unconfigured device discovery', () => {
     const UNKNOWN = {id: 'bf99999999999999', ip: '10.0.0.9'};
     const BARE = 'Discovered a device that has not been configured yet (%s@%s).';
