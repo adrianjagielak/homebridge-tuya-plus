@@ -155,6 +155,78 @@ describe('protocol version normalization', () => {
     });
 });
 
+// A wrong-length local key made crypto.createCipheriv throw "Invalid key length"
+// from inside a socket callback (see _send_3_3), which goes unhandled and crashes
+// Homebridge into a restart loop. An out-of-spec key must be refused clearly,
+// up front, without ever reaching the cipher or taking the process down.
+describe('invalid local key handling', () => {
+    describe('isValidLocalKey', () => {
+        test.each([
+            ['0123456789abcdef', true],    // 16 ASCII chars
+            ['short', false],
+            ['0123456789abcdefXX', false], // 18 chars
+            ['', false],
+            ['012345678901234é', false],   // 16 chars but 17 UTF-8 bytes
+            [Buffer.alloc(16), true],
+            [Buffer.alloc(8), false],
+            [null, false],
+            [undefined, false],
+            [12345678901234567, false],    // not a string/Buffer
+        ])('isValidLocalKey(%p) === %p', (key, expected) => {
+            expect(TuyaAccessory.isValidLocalKey(key)).toBe(expected);
+        });
+    });
+
+    test('a wrong-length key is flagged and logged without throwing', () => {
+        let device;
+        expect(() => { device = makeDevice('3.3', {key: 'too-short'}); }).not.toThrow();
+        expect(device._invalidKey).toBe(true);
+        expect(device.log.error).toHaveBeenCalledWith(expect.stringContaining('16 characters'));
+        const logged = device.log.error.mock.calls.flat().join(' ');
+        expect(logged).toContain('Protocol Test Device');
+    });
+
+    test('a valid 16-character key is accepted and logs no error', () => {
+        const device = makeDevice('3.3');
+        expect(device._invalidKey).toBe(false);
+        expect(device.log.error).not.toHaveBeenCalled();
+    });
+
+    test('_connect() opens no socket for an invalid-key device', () => {
+        const device = makeDevice('3.5', {key: 'bad'});
+        device._connect();
+        expect(device._socket).toBeUndefined();
+        expect(device.connected).toBe(false);
+    });
+
+    // The exact path that used to crash: a connected device whose update() flows
+    // into _send -> _send_3_x -> createCipheriv. It must short-circuit to false.
+    test.each(['3.1', '3.3', '3.4', '3.5'])(
+        'update() never reaches the cipher for an invalid-key %s device, even when connected',
+        version => {
+            const device = makeDevice(version, {key: 'nope'});
+            const written = attachSocketStub(device); // also forces connected = true
+
+            let result;
+            expect(() => { result = device.update({1: true}); }).not.toThrow();
+            expect(result).toBe(false);
+            expect(written).toHaveLength(0);
+        }
+    );
+
+    test('a fake device without a key is never treated as invalid', () => {
+        const device = new TuyaAccessory({
+            id: 'bf1234567890abcdef12',
+            name: 'Fake Device',
+            fake: true,
+            connect: false,
+            log: makeLog(),
+        });
+        expect(device._invalidKey).toBe(false);
+        expect(device.log.error).not.toHaveBeenCalled();
+    });
+});
+
 describe('message handler routing', () => {
     const HANDLERS = ['_msgHandler_3_1', '_msgHandler_3_3', '_msgHandler_3_4', '_msgHandler_3_5'];
 
