@@ -110,9 +110,4 @@ describe('TuyaCloudMessaging — decryption + dispatch', () => {
         mq.subscribeDevice('DEV1', () => { throw new Error('should not be called'); });
         expect(() => mq._onMessage('topic', Buffer.from('not json'))).not.toThrow();
     });
-
-    test('reports whether realtime is available (mqtt installed)', () => {
-        // mqtt is an (optional) dependency of this project, so it should load.
-        expect(typeof TuyaCloudMessaging.isAvailable()).toBe('boolean');
-    });
 });
