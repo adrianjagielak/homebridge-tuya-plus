@@ -48,30 +48,9 @@ A community-maintained Homebridge plugin for controlling Tuya devices locally ov
 * Switches<sup>[15](https://github.com/adrianjagielak/homebridge-tuya-plus/blob/main/wiki/Supported-Device-Types.md#switch)</sup>
 * Vertical Blinds<sup>[16](https://github.com/adrianjagielak/homebridge-tuya-plus/blob/main/wiki/Supported-Device-Types.md#vertical-blinds-with-tilt)</sup>
 
-Note: Motion, and other sensor types don't behave well with responce requests, so they will not be added. 
+## Cloud fallback
 
-## Supported Tuya Protocol Versions
-
-The plugin speaks every published Tuya LAN protocol version:
-
-| Tuya LAN protocol | Framing | Encryption | Status |
-|---|---|---|---|
-| 3.1 | `0x55AA` | AES-128-ECB (base64, control only) | ✅ Supported |
-| 3.2 | `0x55AA` | AES-128-ECB | ✅ Supported |
-| 3.3 | `0x55AA` | AES-128-ECB | ✅ Supported |
-| 3.4 | `0x55AA` | AES-128-ECB, session key, HMAC-SHA256 | ✅ Supported |
-| 3.5 | `0x6699` | AES-128-GCM, session key | ✅ Supported |
-| 3.6 and newer | — | — | ✅ Forward-compatible (see below) |
-
-The protocol version is auto-detected from the device's discovery broadcast, so you normally don't need to configure anything.
-
-Protocol **3.5** is currently the newest Tuya LAN protocol in existence: it is the latest version implemented by Tuya's own open-source device SDK ([TuyaOpen](https://github.com/tuya/TuyaOpen)) and by the reference reverse-engineered implementations ([tinytuya](https://github.com/jasonacox/tinytuya/blob/master/PROTOCOL.md)). No device firmware speaking a "3.6" protocol has been observed in the wild so far.
-
-This plugin is nevertheless **3.6-ready**: if a device reports a newer protocol version (e.g. `3.6`) in its broadcast, the plugin automatically talks to it using the newest (3.5/GCM) protocol stack while tagging payloads with the device's reported version — the same forward-compatibility strategy used by tinytuya. Should such a device misbehave, you can pin it to a specific protocol with the `forceVersion` device option (e.g. `"forceVersion": "3.5"`), or use `version` to set a protocol for devices that can't be discovered (e.g. on another subnet).
-
-## Cloud fallback (optional)
-
-The plugin is LAN-first — everything is controlled locally by default. If you add Tuya Cloud credentials in a top-level `cloud` block, it keeps one cloud session in the background and uses it as a fallback: each device is tried on the LAN first, and only falls back to the cloud when it can't be reached locally — a brief LAN hiccup, or hardware that never appears on the LAN at all (e.g. battery-powered "sleepy" irrigation timers). It's opt-in and local always comes first, and existing configs need no changes — so it's also a handy fix if some devices occasionally show as "No Response".
+The plugin is LAN-first — everything is controlled locally by default. If you add Tuya Cloud credentials in a top-level `cloud` block, it keeps a cloud session in the background and uses it as a fallback: each device is tried on the LAN first, and only falls back to the cloud when it can't be reached locally — a brief LAN hiccup, or hardware that never appears on the LAN at all (e.g. battery-powered "sleepy" devices). It's opt-in and local always comes first, and existing configs need no changes — so it's also a handy fix if some devices occasionally show as "No Response".
 
 See the **[Tuya Cloud Setup guide](https://github.com/adrianjagielak/homebridge-tuya-plus/blob/main/wiki/Tuya-Cloud-Setup.md)** for credentials and setup.
 
@@ -90,8 +69,7 @@ sudo npm install -g homebridge-tuya-plus
 #### Bleeding-edge (`dev`) builds:
 
 Every commit to `main` is automatically published to npm under the `dev` tag — a
-separate, unstable channel. The stable release always stays on `latest`, so this
-won't affect normal installs. To try the latest in-development build:
+separate, unstable channel. To try the latest in-development build:
 
 ```
 sudo npm install -g homebridge-tuya-plus@dev
@@ -99,20 +77,6 @@ sudo npm install -g homebridge-tuya-plus@dev
 
 These are versioned like `3.14.0-dev.<n>` and may be unstable; use the default
 install above for production.
-
-#### Testing a specific pull request:
-
-Maintainers can publish an unmerged PR as a throwaway test build by commenting
-`/publish` on it. The build goes to its own `pr-<number>` tag — never `latest`
-or `dev` — so it never reaches normal installs. The bot replies on the PR with
-the exact install command, e.g.:
-
-```
-sudo npm install -g homebridge-tuya-plus@pr-57
-```
-
-Each build also gets a unique, immutable version like `3.14.0-pr.57.<n>` that you
-can pin or paste into the Homebridge UI's "Install Alternate Version" field.
 
 ## Configuration
 > UI
@@ -146,7 +110,7 @@ If you have new accessory logic for a new device, please add a function defined 
 
 #
 
-Go check out my other Homebridge plugins:
+Check out my other Homebridge plugins:
 
 * [homebridge-futurehome](https://github.com/adrianjagielak/homebridge-futurehome) ([npm](https://npmjs.com/package/homebridge-futurehome))
 * [homebridge-tuya-plus](https://github.com/adrianjagielak/homebridge-tuya-plus) ([npm](https://npmjs.com/package/homebridge-tuya-plus))
