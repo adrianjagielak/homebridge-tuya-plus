@@ -24,6 +24,7 @@ jest.mock('../lib/TuyaDiscovery', () => ({
 }));
 
 const TuyaDevice = require('../lib/TuyaDevice');
+const TuyaAccessory = require('../lib/TuyaAccessory');
 const TuyaCloudApi = require('../lib/TuyaCloudApi');
 const TuyaCloudMessaging = require('../lib/TuyaCloudMessaging');
 const TuyaDiscovery = require('../lib/TuyaDiscovery');
@@ -56,7 +57,7 @@ function makeLog() {
 }
 
 function makeApi() {
-    return {hap: makeHap(), on: jest.fn(), registerPlatformAccessories: jest.fn()};
+    return {hap: makeHap(), on: jest.fn(), registerPlatformAccessories: jest.fn(), unregisterPlatformAccessories: jest.fn()};
 }
 
 function run(config) {
@@ -137,5 +138,52 @@ describe('TuyaLan — discovery routing', () => {
     test('a cloud-only configuration starts no LAN discovery', () => {
         run({cloud: CLOUD, devices: [SLEEPY()]});
         expect(TuyaDiscovery.start).not.toHaveBeenCalled();
+    });
+});
+
+describe('TuyaLan — duplicate device ids', () => {
+    // Two entries sharing an id resolve to one accessory UUID; configuring it twice
+    // used to crash the child bridge (addAccessory read back its own wrapper and
+    // tried to unregister it). The repeat must be dropped with a warning instead.
+    test('a repeated id is configured once and warns', () => {
+        const platform = run({devices: [SW(), SW()]});
+        expect(TuyaDevice).toHaveBeenCalledTimes(1);
+        expect(platform.addAccessory).toHaveBeenCalledTimes(1);
+        expect(platform.log.warn).toHaveBeenCalled();
+    });
+
+    test('distinct ids are all configured', () => {
+        run({devices: [SW(), SLEEPY()]});
+        expect(TuyaDevice).toHaveBeenCalledTimes(2);
+    });
+
+    test('a repeated fake id is configured once', () => {
+        run({devices: [SW({fake: true}), SW({fake: true})]});
+        expect(TuyaAccessory).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('TuyaLan — removeAccessory hardening', () => {
+    function platformWith(PlatformAccessory) {
+        let cls;
+        factory({platformAccessory: PlatformAccessory, hap: makeHap(), registerPlatform: (n, p, c) => { cls = c; }});
+        return new cls(makeLog(), {devices: [SW()]}, makeApi());
+    }
+    const PlatformAccessoryStub = function(name, uuid) { this.displayName = name; this.UUID = uuid; };
+
+    test('a non-PlatformAccessory (e.g. an accessory wrapper) is never unregistered', () => {
+        const platform = platformWith(PlatformAccessoryStub);
+        expect(() => platform.removeAccessory({accessory: {}})).not.toThrow();
+        expect(platform.api.unregisterPlatformAccessories).not.toHaveBeenCalled();
+        expect(platform.log.warn).toHaveBeenCalled();
+    });
+
+    test('a real PlatformAccessory is unregistered and dropped from the cache', () => {
+        const platform = platformWith(PlatformAccessoryStub);
+        const accessory = new PlatformAccessoryStub('Real', 'uuid:x');
+        platform.cachedAccessories.set('uuid:x', accessory);
+        platform.removeAccessory(accessory);
+        expect(platform.api.unregisterPlatformAccessories).toHaveBeenCalledTimes(1);
+        expect(platform.cachedAccessories.has('uuid:x')).toBe(false);
     });
 });
