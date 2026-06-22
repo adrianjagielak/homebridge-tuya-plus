@@ -16,6 +16,7 @@ jest.mock('../lib/TuyaAccessory', () => jest.fn().mockImplementation(function(pr
 jest.mock('../lib/TuyaCloudApi', () => jest.fn().mockImplementation(function(cfg) {
     this.endpoint = 'https://openapi.example.com';
     this.cfg = cfg;
+    this.getDeviceInfo = jest.fn();
 }));
 jest.mock('../lib/TuyaCloudMessaging', () => jest.fn().mockImplementation(function() {}));
 jest.mock('../lib/TuyaDiscovery', () => ({
@@ -132,6 +133,63 @@ describe('TuyaLan — discovery routing', () => {
     test('a cloud-only configuration starts no LAN discovery', () => {
         run({cloud: CLOUD, devices: [SLEEPY()]});
         expect(TuyaDiscovery.start).not.toHaveBeenCalled();
+    });
+});
+
+describe('TuyaLan — unconfigured device discovery', () => {
+    const UNKNOWN = {id: 'bf99999999999999', ip: '10.0.0.9'};
+    const BARE = 'Discovered a device that has not been configured yet (%s@%s).';
+    const ENRICHED = 'Discovered a device that has not been configured yet: %s%s (%s@%s).';
+
+    test('without a cloud session, the bare id@ip warning is logged', async () => {
+        const platform = run({devices: [SW()]});
+        await platform._warnUnconfiguredDevice(UNKNOWN);
+        expect(platform.log.warn).toHaveBeenCalledWith(BARE, UNKNOWN.id, UNKNOWN.ip);
+    });
+
+    test('with a cloud session, the warning is enriched with the device name and product', async () => {
+        const platform = run({cloud: CLOUD, devices: [SW()]});
+        platform.cloudApi.getDeviceInfo.mockResolvedValue({name: 'Living Room Light', product_name: 'Smart Bulb', category: 'dj', online: true});
+
+        await platform._warnUnconfiguredDevice(UNKNOWN);
+
+        expect(platform.cloudApi.getDeviceInfo).toHaveBeenCalledWith(UNKNOWN.id);
+        const [format, ...args] = platform.log.warn.mock.calls[0];
+        expect(format).toBe(ENRICHED);
+        const text = args.join(' ');
+        expect(text).toContain('"Living Room Light"');
+        expect(text).toContain('Smart Bulb');
+        expect(text).toContain('category dj');
+        expect(text).toContain(UNKNOWN.id);
+    });
+
+    test('a cloud lookup that fails falls back to the bare warning', async () => {
+        const platform = run({cloud: CLOUD, devices: [SW()]});
+        platform.cloudApi.getDeviceInfo.mockRejectedValue(new Error('device not found'));
+
+        await platform._warnUnconfiguredDevice(UNKNOWN);
+
+        expect(platform.log.warn).toHaveBeenCalledWith(BARE, UNKNOWN.id, UNKNOWN.ip);
+        expect(platform.log.debug).toHaveBeenCalled();
+    });
+
+    test('a cloud record without a name falls back to the bare warning', async () => {
+        const platform = run({cloud: CLOUD, devices: [SW()]});
+        platform.cloudApi.getDeviceInfo.mockResolvedValue({online: true});
+
+        await platform._warnUnconfiguredDevice(UNKNOWN);
+
+        expect(platform.log.warn).toHaveBeenCalledWith(BARE, UNKNOWN.id, UNKNOWN.ip);
+    });
+
+    test('the discover handler routes an unconfigured device through the cloud lookup', () => {
+        const platform = run({cloud: CLOUD, devices: [SW()]});
+        platform.cloudApi.getDeviceInfo.mockResolvedValue(null);
+
+        const onDiscover = TuyaDiscovery.on.mock.calls.find(c => c[0] === 'discover')[1];
+        onDiscover(UNKNOWN);
+
+        expect(platform.cloudApi.getDeviceInfo).toHaveBeenCalledWith(UNKNOWN.id);
     });
 });
 

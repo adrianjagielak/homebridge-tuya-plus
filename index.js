@@ -228,12 +228,7 @@ class TuyaLan {
       (config) => {
         if (!config || !config.id) return;
         const tuyaDevice = this.tuyaDevices.get(config.id);
-        if (!tuyaDevice)
-          return this.log.warn(
-            'Discovered a device that has not been configured yet (%s@%s).',
-            config.id,
-            config.ip,
-          );
+        if (!tuyaDevice) return this._warnUnconfiguredDevice(config);
         if (connectedDevices.includes(config.id)) return;
 
         connectedDevices.push(config.id);
@@ -282,6 +277,49 @@ class TuyaLan {
         }
       });
     }, this.config.discoverTimeout ?? DEFAULT_DISCOVER_TIMEOUT);
+  }
+
+  // A device showed up on the LAN that isn't in the user's config. When the
+  // optional cloud session is available we look the device up there first, so
+  // the warning can name it (and hint at its product/category) and the user
+  // can tell which physical device still needs configuring — far more useful
+  // than a bare id@ip. If there's no cloud session, or the lookup fails (the
+  // device belongs to another account, the device-management API isn't
+  // authorised, the network is down, …), fall back to the plain warning.
+  // Never throws: enrichment is best-effort and must not disrupt discovery.
+  async _warnUnconfiguredDevice(config) {
+    const bareWarning = () =>
+      this.log.warn(
+        'Discovered a device that has not been configured yet (%s@%s).',
+        config.id,
+        config.ip,
+      );
+
+    if (!this.cloudApi) return bareWarning();
+
+    let info;
+    try {
+      info = await this.cloudApi.getDeviceInfo(config.id);
+    } catch (ex) {
+      this.log.debug(
+        'Tuya Cloud lookup for unconfigured device %s failed: %s',
+        config.id,
+        ex.message,
+      );
+    }
+    if (!info || !info.name) return bareWarning();
+
+    const details = [];
+    if (info.product_name) details.push(info.product_name);
+    if (info.category) details.push(`category ${info.category}`);
+
+    this.log.warn(
+      'Discovered a device that has not been configured yet: %s%s (%s@%s).',
+      `"${info.name}"`,
+      details.length ? ` — ${details.join(', ')}` : '',
+      config.id,
+      config.ip,
+    );
   }
 
   /* ------------------------------------------------------------------ *

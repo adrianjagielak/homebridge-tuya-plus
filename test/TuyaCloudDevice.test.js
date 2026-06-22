@@ -246,6 +246,59 @@ describe('TuyaCloudDevice', () => {
             }
         });
 
+        test('a device reachable over the LAN logs the fallback failure as harmless (debug, not warn)', () => {
+            jest.useFakeTimers();
+            try {
+                const dev = makeDevice(makeApi(), null, {key: 'abc', isLanConnected: () => true});
+                const warn = jest.spyOn(log, 'warn');
+                const debug = jest.spyOn(log, 'debug');
+
+                dev._onConnectFailure(new Error('permission deny (code 1106)'));
+
+                expect(warn).not.toHaveBeenCalled();
+                expect(debug).toHaveBeenCalledTimes(1);
+                expect(debug.mock.calls[0][0]).toContain('reachable over the LAN');
+            } finally {
+                jest.useRealTimers();
+            }
+        });
+
+        test('the same failure re-surfaces (debug → warn) when the LAN path drops', () => {
+            jest.useFakeTimers();
+            try {
+                let lanUp = true;
+                const dev = makeDevice(makeApi(), null, {key: 'abc', isLanConnected: () => lanUp});
+                const warn = jest.spyOn(log, 'warn');
+                const err = new Error('permission deny (code 1106)');
+
+                dev._onConnectFailure(err);        // LAN up → harmless, debug only
+                expect(warn).not.toHaveBeenCalled();
+
+                lanUp = false;
+                dev._onConnectFailure(err);        // identical error, but LAN now down → surfaced
+                expect(warn).toHaveBeenCalledTimes(1);
+                expect(warn.mock.calls[0][0]).toContain("isn't reachable over the LAN");
+            } finally {
+                jest.useRealTimers();
+            }
+        });
+
+        test('permission-deny adds the offline-unbinding hint; an unrelated error does not', () => {
+            jest.useFakeTimers();
+            try {
+                const dev = makeDevice(makeApi(), null, {key: 'abc'}); // LAN-capable, LAN down
+                const warn = jest.spyOn(log, 'warn');
+
+                dev._onConnectFailure(new Error('permission deny (code 1106)'));
+                expect(warn.mock.calls[0][0]).toContain('offline for a long time');
+
+                dev._onConnectFailure(new Error('request timed out'));
+                expect(warn.mock.calls[1][0]).not.toContain('offline for a long time');
+            } finally {
+                jest.useRealTimers();
+            }
+        });
+
         test('a different error message is surfaced again, not suppressed', () => {
             jest.useFakeTimers();
             try {

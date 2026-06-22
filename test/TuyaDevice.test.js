@@ -232,6 +232,20 @@ describe('TuyaDevice — composition', () => {
         expect(dev.cloud).toBeNull();
     });
 
+    test('the cloud backend can see whether the LAN path is currently up', () => {
+        const api = {
+            isConfigured: () => true,
+            getStatus: jest.fn().mockResolvedValue([]),
+            getDeviceInfo: jest.fn().mockResolvedValue({online: true}),
+            sendCommands: jest.fn()
+        };
+        const dev = makeDevice({cloudApi: api});
+
+        expect(dev.cloud.isLanConnected()).toBe(false); // no LAN attached yet
+        dev.lan = {connected: true};
+        expect(dev.cloud.isLanConnected()).toBe(true);  // reflects live LAN state
+    });
+
     test('attachLan builds the LAN backend with the discovered version (forceVersion still wins)', () => {
         const dev = makeDevice({ip: '10.0.0.5'});
         dev.attachLan({ip: '10.0.0.9', version: '3.3'});
