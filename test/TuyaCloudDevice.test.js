@@ -279,6 +279,39 @@ describe('TuyaCloudDevice', () => {
         expect(changes[0]).toEqual({switch_1: true, '1': true});
     });
 
+    test('realtime bare numeric-keyed items (no code) are mapped to their code', async () => {
+        // Custom/non-standard DPs (e.g. an irrigation timer's `charging`, dp 101)
+        // arrive over MQTT as a bare { "<dpId>": value } pair with no `code` field.
+        // They must be applied via the learned dp→code map, not dropped.
+        const api = makeApi();
+        api.getShadowProperties = jest.fn().mockResolvedValue([
+            {code: 'switch_1', dp_id: 1, value: false},
+            {code: 'charging', dp_id: 101, value: false}
+        ]);
+        const dev = makeDevice(api);
+        await dev._connect();
+
+        const changes = [];
+        dev.on('change', c => changes.push(c));
+        dev._applyStatus([{'101': true}]); // bare numeric, as the message service delivers `charging`
+        expect(dev.state.charging).toBe(true);
+        expect(dev.state['101']).toBe(true);
+        expect(changes[0]).toEqual({charging: true, '101': true});
+    });
+
+    test('a bare numeric item with no learned code is still indexed numerically', async () => {
+        const api = makeApi();
+        api.getShadowProperties = jest.fn().mockResolvedValue([{code: 'switch_1', dp_id: 1, value: false}]);
+        const dev = makeDevice(api);
+        await dev._connect();
+
+        const changes = [];
+        dev.on('change', c => changes.push(c));
+        dev._applyStatus([{'137': 42}]); // unknown dp, no code mapping
+        expect(dev.state['137']).toBe(42);
+        expect(changes[0]).toEqual({'137': 42});
+    });
+
     test('falls back to /status (code-only) when the shadow is unavailable', async () => {
         const api = makeApi();
         api.getShadowProperties = jest.fn().mockResolvedValue(null);
