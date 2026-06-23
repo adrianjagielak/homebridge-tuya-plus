@@ -226,9 +226,18 @@ describe('SimpleGarageDoorAccessory.setTargetDoorState — close (stop-before-cl
     beforeEach(() => jest.useFakeTimers());
     afterEach(() => jest.useRealTimers());
 
+    // A close is only ever issued from an open gate, so the committed target
+    // (cachedTargetDoorState) starts OPEN — the state HomeKit shows before the
+    // tap. Without it the very first close would match the helper's default
+    // committed target and be (correctly) treated as a redundant repeat.
+    function openGate(instance, device, state = STATE_OPENING_OR_OPEN) {
+        if (state !== undefined) device.state['105'] = state;
+        instance.accessory.context.cachedTargetDoorState = TDS.OPEN;
+    }
+
     test('CLOSE fires immediately when the gate is already stopped (state 11)', () => {
         const { instance, device, accessory } = makeSimpleGarage();
-        device.state['105'] = STATE_STOPPED;
+        openGate(instance, device, STATE_STOPPED);
 
         instance.setTargetDoorState(TDS.CLOSED);
 
@@ -242,7 +251,7 @@ describe('SimpleGarageDoorAccessory.setTargetDoorState — close (stop-before-cl
     test('CLOSE while opening (state 12) fires stop, then close after stopBeforeCloseMs', () => {
         const { instance, device } = makeSimpleGarage();
         instance.stopBeforeCloseMs = 1500;
-        device.state['105'] = STATE_OPENING_OR_OPEN;
+        openGate(instance, device, STATE_OPENING_OR_OPEN);
 
         instance.setTargetDoorState(TDS.CLOSED);
 
@@ -259,10 +268,10 @@ describe('SimpleGarageDoorAccessory.setTargetDoorState — close (stop-before-cl
         expect(instance.pendingCloseTimer).toBeNull();
     });
 
-    test('CLOSE while closing (state 13) also uses stop-before-close', () => {
+    test('CLOSE that reads state 13 still uses stop-before-close (13 is not "stopped")', () => {
         const { instance, device } = makeSimpleGarage();
         instance.stopBeforeCloseMs = 1500;
-        device.state['105'] = STATE_CLOSING_OR_CLOSED;
+        openGate(instance, device, STATE_CLOSING_OR_CLOSED);
 
         instance.setTargetDoorState(TDS.CLOSED);
         expect(device.update).toHaveBeenNthCalledWith(1, { '103': true });
@@ -274,7 +283,7 @@ describe('SimpleGarageDoorAccessory.setTargetDoorState — close (stop-before-cl
     test('CLOSE with no reported state yet uses stop-before-close', () => {
         const { instance, device } = makeSimpleGarage();
         instance.stopBeforeCloseMs = 1500;
-        // device.state['105'] intentionally left undefined
+        openGate(instance, device, undefined); // device.state['105'] left undefined
 
         instance.setTargetDoorState(TDS.CLOSED);
         expect(device.update).toHaveBeenNthCalledWith(1, { '103': true });
@@ -286,7 +295,7 @@ describe('SimpleGarageDoorAccessory.setTargetDoorState — close (stop-before-cl
     test('A duplicate CLOSE during the wait does not restart or double-fire', () => {
         const { instance, device } = makeSimpleGarage();
         instance.stopBeforeCloseMs = 1500;
-        device.state['105'] = STATE_OPENING_OR_OPEN;
+        openGate(instance, device, STATE_OPENING_OR_OPEN);
 
         instance.setTargetDoorState(TDS.CLOSED);
         expect(device.update).toHaveBeenCalledTimes(1); // stop
@@ -300,10 +309,52 @@ describe('SimpleGarageDoorAccessory.setTargetDoorState — close (stop-before-cl
         expect(device.update).toHaveBeenNthCalledWith(2, { '102': true });
     });
 
+    test('A repeat close once committed is swallowed — no second stop-before-close into the moving gate', () => {
+        // HomeKit re-sends the same target seconds after a tap (a second
+        // controller echoing it, or its own retry). Acting on it fired another
+        // stop-before-close that halted the closing gate and restarted it — the
+        // reported stutter. Level-triggered dispatch makes the repeat a no-op.
+        const { instance, device } = makeSimpleGarage();
+        instance.stopBeforeCloseMs = 1500;
+        openGate(instance, device, STATE_OPENING_OR_OPEN);
+
+        instance.setTargetDoorState(TDS.CLOSED);
+        jest.advanceTimersByTime(1500);
+        expect(device.update).toHaveBeenCalledTimes(2); // stop + close
+        expect(device.update).toHaveBeenNthCalledWith(2, { '102': true });
+
+        // The gate is now committed closed and still travelling (reports 13).
+        emitState(device, STATE_CLOSING_OR_CLOSED);
+        jest.advanceTimersByTime(3000);
+        instance.setTargetDoorState(TDS.CLOSED); // HomeKit's repeat close
+        expect(device.update).toHaveBeenCalledTimes(2); // swallowed — no second stop/close
+    });
+
+    test('A close runs again once the gate is reported open (committed target tracks reports)', () => {
+        const { instance, device } = makeSimpleGarage();
+        instance.stopBeforeCloseMs = 1500;
+        openGate(instance, device, STATE_OPENING_OR_OPEN);
+
+        instance.setTargetDoorState(TDS.CLOSED);
+        jest.advanceTimersByTime(1500);
+        expect(device.update).toHaveBeenCalledTimes(2); // stop + close
+        emitState(device, STATE_CLOSING_OR_CLOSED); // committed = closed
+
+        instance.setTargetDoorState(TDS.CLOSED); // repeat — swallowed
+        expect(device.update).toHaveBeenCalledTimes(2);
+
+        // The gate is opened again (here, externally) — a close is a real
+        // transition once more and runs.
+        emitState(device, STATE_OPENING_OR_OPEN); // committed = open
+        instance.setTargetDoorState(TDS.CLOSED);
+        expect(device.update).toHaveBeenCalledTimes(3);
+        expect(device.update).toHaveBeenNthCalledWith(3, { '103': true });
+    });
+
     test('OPEN during the wait cancels the pending close and opens instead', () => {
         const { instance, device } = makeSimpleGarage();
         instance.stopBeforeCloseMs = 1500;
-        device.state['105'] = STATE_OPENING_OR_OPEN;
+        openGate(instance, device, STATE_OPENING_OR_OPEN);
 
         instance.setTargetDoorState(TDS.CLOSED);
         expect(device.update).toHaveBeenNthCalledWith(1, { '103': true }); // stop
@@ -321,7 +372,7 @@ describe('SimpleGarageDoorAccessory.setTargetDoorState — close (stop-before-cl
     test('Status reports are ignored during the stop-before-close window', () => {
         const { instance, device, accessory } = makeSimpleGarage();
         instance.stopBeforeCloseMs = 1500;
-        device.state['105'] = STATE_OPENING_OR_OPEN;
+        openGate(instance, device, STATE_OPENING_OR_OPEN);
         instance.currentDoorState = CDS.OPEN;
         instance.characteristicCurrentDoorState.value = CDS.OPEN;
 
@@ -345,7 +396,7 @@ describe('SimpleGarageDoorAccessory.setTargetDoorState — close (stop-before-cl
     test('stopBeforeCloseMs is configurable', () => {
         const { instance, device } = makeSimpleGarage();
         instance.stopBeforeCloseMs = 300;
-        device.state['105'] = STATE_OPENING_OR_OPEN;
+        openGate(instance, device, STATE_OPENING_OR_OPEN);
 
         instance.setTargetDoorState(TDS.CLOSED);
         expect(device.update).toHaveBeenNthCalledWith(1, { '103': true });
@@ -361,7 +412,7 @@ describe('SimpleGarageDoorAccessory.setTargetDoorState — close (stop-before-cl
         instance.dpClose = '2';
         instance.dpStop = '4';
         instance.stopBeforeCloseMs = 1000;
-        device.state['105'] = STATE_OPENING_OR_OPEN;
+        openGate(instance, device, STATE_OPENING_OR_OPEN);
 
         instance.setTargetDoorState(TDS.CLOSED);
         expect(device.update).toHaveBeenNthCalledWith(1, { '4': true });
@@ -580,6 +631,7 @@ describe('SimpleGarageDoorAccessory — force switches', () => {
     test('Force Close fires the close action (immediately when already stopped)', () => {
         const { instance, device, accessory } = makeSimpleGarage();
         device.state['105'] = STATE_STOPPED;
+        accessory.context.cachedTargetDoorState = TDS.OPEN; // gate open → close is a real transition
 
         instance.setTargetDoorState(TDS.CLOSED);
 
