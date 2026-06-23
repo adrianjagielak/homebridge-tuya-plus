@@ -219,3 +219,58 @@ describe('TuyaCloudApi — endpoints', () => {
         await expect(api.request('GET', '/x')).rejects.toThrow(/no permissions/);
     });
 });
+
+describe('TuyaCloudApi — HTTP trace (debug.logCloudHttp)', () => {
+    const makeLog = () => ({info: () => {}, warn: () => {}, error: () => {}, debug: jest.fn()});
+
+    test('logHttp is off unless explicitly enabled', () => {
+        expect(makeApi().logHttp).toBe(false);
+        expect(makeApi({logHttp: true}).logHttp).toBe(true);
+    });
+
+    test('redaction masks credentials but keeps device data', () => {
+        const api = makeApi();
+        const redacted = api._redactForLog({
+            client_id: 'aid1234567890', access_token: 'tok_abcdef123456', sign: 'SIGNATUREVALUE', t: '1700', nonce: 'n-1',
+            result: {access_token: 'inner-token-xyz', refresh_token: 'refresh-xyz', uid: 'uid-1234567', online: true},
+            commands: [{code: 'switch_1', value: true}]
+        });
+
+        expect(redacted.client_id).not.toBe('aid1234567890');
+        expect(redacted.access_token).not.toBe('tok_abcdef123456');
+        expect(redacted.sign).not.toBe('SIGNATUREVALUE');
+        expect(redacted.result.access_token).not.toBe('inner-token-xyz');
+        expect(redacted.result.refresh_token).not.toBe('refresh-xyz');
+        expect(redacted.result.uid).not.toBe('uid-1234567');
+        // Non-secret fields and the actual device data-points pass through intact.
+        expect(redacted.t).toBe('1700');
+        expect(redacted.nonce).toBe('n-1');
+        expect(redacted.result.online).toBe(true);
+        expect(redacted.commands).toEqual([{code: 'switch_1', value: true}]);
+    });
+
+    test('no trace is logged when the switch is off', () => {
+        const log = makeLog();
+        const api = makeApi({log});
+        api._traceHttp('POST', '/v1.0/devices/dev/commands', {sign: 'X'}, '{"commands":[]}', 200, {success: true});
+        expect(log.debug).not.toHaveBeenCalled();
+    });
+
+    test('a trace carries the request/response but never the raw token or signature', () => {
+        const log = makeLog();
+        const api = makeApi({log, logHttp: true});
+        const headers = {client_id: 'aid', sign: 'SIGN_SECRET_VALUE', access_token: 'TOKEN_SECRET_VALUE', t: '1', nonce: 'n', 'Content-Type': 'application/json'};
+        const body = JSON.stringify({commands: [{code: 'wfh_open', value: true}]});
+
+        api._traceHttp('POST', '/v1.0/devices/dev/commands', headers, body, 200, {success: false, code: 2008, msg: 'command or value not support'});
+
+        expect(log.debug).toHaveBeenCalledTimes(1);
+        const line = log.debug.mock.calls[0][0];
+        expect(line).toContain('POST /v1.0/devices/dev/commands');
+        expect(line).toContain('wfh_open');           // the attempted command is visible
+        expect(line).toContain('2008');                // and the cloud's verdict
+        expect(line).toContain('command or value not support');
+        expect(line).not.toContain('TOKEN_SECRET_VALUE'); // …but secrets are not
+        expect(line).not.toContain('SIGN_SECRET_VALUE');
+    });
+});

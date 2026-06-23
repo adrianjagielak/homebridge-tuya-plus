@@ -402,7 +402,11 @@ class TuyaLan {
       );
     }
 
-    this.cloudApi = new TuyaCloudApi({ ...cloudCfg, log: this.log });
+    this.cloudApi = new TuyaCloudApi({
+      ...cloudCfg,
+      log: this.log,
+      logHttp: coerceBoolean(this._debugConfig().logCloudHttp),
+    });
     this.cloudMessaging = new TuyaCloudMessaging({
       api: this.cloudApi,
       log: this.log,
