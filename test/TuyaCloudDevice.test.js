@@ -240,6 +240,29 @@ describe('TuyaCloudDevice', () => {
             expect(api.sendCommands).toHaveBeenCalledWith('dev1', [{code: 'switch_1', value: false}]);
             expect(api.sendProperties).toHaveBeenCalledWith('dev1', [{code: 'wfh_open', value: true}]);
         });
+
+        // HomeKit often double-sends a write; running the two concurrently used to
+        // race the learning (the 2nd saw the code "tried" but not yet learned and
+        // failed). Serializing writes per device fixes it.
+        test('concurrent duplicate writes of an unknown code are serialized, not raced', async () => {
+            const api = makeApi();
+            api.getShadowProperties = jest.fn().mockResolvedValue([{code: 'Power', dp_id: 1, value: false}]);
+            api.sendCommands.mockImplementation((id, cmds) =>
+                cmds.some(c => c.code === 'Power')
+                    ? Promise.reject(new Error('command or value not support (code 2008)'))
+                    : Promise.resolve(true));
+            const dev = makeDevice(api, null, {key: 'abc'});
+            await dev._connect();
+            const warn = jest.spyOn(log, 'warn');
+
+            const [a, b] = await Promise.all([dev.update({'1': true}), dev.update({'1': true})]);
+
+            expect(a).toBe(true);
+            expect(b).toBe(true);
+            expect(warn).not.toHaveBeenCalled();               // the 2nd write didn't spuriously fail
+            expect(api.sendCommands).toHaveBeenCalledTimes(1);  // only the 1st probed commands
+            jest.restoreAllMocks();
+        });
     });
 
     test('realtime code-only deltas are mirrored to numeric ids via the learned map', async () => {
