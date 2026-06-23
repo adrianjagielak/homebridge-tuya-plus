@@ -173,7 +173,7 @@ describe('TuyaCloudApi — endpoints', () => {
         const ok = await api.sendCommands('dev', [{code: 'switch_1', value: true}]);
         expect(ok).toBe(true);
         expect(captured.method).toBe('POST');
-        expect(captured.path).toBe('/v1.0/devices/dev/commands');
+        expect(captured.path).toBe('/v1.0/iot-03/devices/dev/commands');
         expect(captured.body).toEqual({commands: [{code: 'switch_1', value: true}]});
     });
 
@@ -182,6 +182,14 @@ describe('TuyaCloudApi — endpoints', () => {
         api._httpsRequest = jest.fn();
         await expect(api.sendCommands('dev', [])).resolves.toBe(true);
         expect(api._httpsRequest).not.toHaveBeenCalled();
+    });
+
+    test('getStatus reads from the iot-03 device endpoint', async () => {
+        const api = ready();
+        let path;
+        api._httpsRequest = async (method, p) => { path = p; return {success: true, result: []}; };
+        await api.getStatus('dev');
+        expect(path).toBe('/v1.0/iot-03/devices/dev/status');
     });
 
     test('getMqttConfig posts the expected body and returns the broker config', async () => {

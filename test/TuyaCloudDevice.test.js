@@ -151,6 +151,16 @@ describe('TuyaCloudDevice', () => {
         expect(api.sendCommands).toHaveBeenCalledWith('dev1', [{code: 'switch_1', value: true}]);
     });
 
+    test('a translated write is dispatched to the (iot-03) commands API', async () => {
+        const api = makeApi();
+        api.getShadowProperties = jest.fn().mockResolvedValue([{code: 'wfh_close', dp_id: 102, value: false}]);
+        const dev = makeDevice(api, null, {key: 'abc'});
+        await dev._connect();
+
+        await dev.update({'102': true});
+        expect(api.sendCommands).toHaveBeenCalledWith('dev1', [{code: 'wfh_close', value: true}]);
+    });
+
     test('realtime code-only deltas are mirrored to numeric ids via the learned map', async () => {
         const api = makeApi();
         api.getShadowProperties = jest.fn().mockResolvedValue([{code: 'switch_1', dp_id: 1, value: false}]);
@@ -352,6 +362,97 @@ describe('TuyaCloudDevice', () => {
             } finally {
                 jest.useRealTimers();
             }
+        });
+    });
+
+    describe('write-failure handling (no log spam)', () => {
+        afterEach(() => jest.restoreAllMocks());
+
+        // A LAN-style accessory (numeric dps) over a cloud project that never
+        // learned the id→code map: the write can't be addressed, so it must not be
+        // fired (it would always be a 2008), and the cause is surfaced just once.
+        test('a numeric write with no learned code map is skipped, not sent, and surfaced once', async () => {
+            const api = makeApi(); // /status only → no dp map
+            const dev = makeDevice(api, null, {key: 'abc'}); // LAN-capable, LAN down here
+            await dev._connect();
+            expect(dev.codeByDpId).toEqual({});
+
+            const warn = jest.spyOn(log, 'warn');
+            const debug = jest.spyOn(log, 'debug');
+
+            expect(dev.update({'1': true})).toBe(false);
+            expect(api.sendCommands).not.toHaveBeenCalled();
+            expect(warn).toHaveBeenCalledTimes(1);
+            expect(warn.mock.calls[0][0]).toContain('over the Tuya Cloud');
+
+            dev.update({'1': true}); // identical → quiet at debug, still not sent
+            expect(warn).toHaveBeenCalledTimes(1);
+            expect(debug).toHaveBeenCalledWith(expect.stringContaining('cloud write skipped'));
+            expect(api.sendCommands).not.toHaveBeenCalled();
+        });
+
+        test('the undeliverable-write note is harmless (debug) while the device is reachable over the LAN', async () => {
+            const dev = makeDevice(makeApi(), null, {key: 'abc', isLanConnected: () => true});
+            await dev._connect();
+            const warn = jest.spyOn(log, 'warn');
+            const debug = jest.spyOn(log, 'debug');
+
+            expect(dev.update({'1': true})).toBe(false);
+            expect(warn).not.toHaveBeenCalled();
+            expect(debug).toHaveBeenCalledWith(expect.stringContaining('over the Tuya Cloud'));
+        });
+
+        test('a cloud-only device (no key) surfaces the undeliverable write at error level', async () => {
+            const dev = makeDevice(makeApi()); // no key → cloud is the only path
+            await dev._connect();
+            const error = jest.spyOn(log, 'error');
+            const warn = jest.spyOn(log, 'warn');
+
+            expect(dev.update({'1': true})).toBe(false);
+            expect(warn).not.toHaveBeenCalled();
+            expect(error).toHaveBeenCalledTimes(1);
+        });
+
+        // A genuinely dispatched command that the cloud rejects (e.g. a real 2008
+        // on a mapped code): surface once, then suppress identical repeats to debug.
+        test('a repeated cloud command failure is surfaced once then suppressed to debug', async () => {
+            const api = makeApi();
+            api.getShadowProperties = jest.fn().mockResolvedValue([{code: 'switch_1', dp_id: 1, value: false}]);
+            const dev = makeDevice(api, null, {key: 'abc'});
+            await dev._connect();
+
+            const warn = jest.spyOn(log, 'warn');
+            const debug = jest.spyOn(log, 'debug');
+            const ex = new Error('POST /v1.0/iot-03/devices/dev1/commands failed: command or value not support (code 2008)');
+            api.sendCommands.mockRejectedValue(ex);
+
+            await dev.update({'1': true}); // mapped → dispatched → rejected
+            expect(api.sendCommands).toHaveBeenCalledWith('dev1', [{code: 'switch_1', value: true}]);
+            expect(warn).toHaveBeenCalledTimes(1);
+            expect(warn.mock.calls[0][0]).toContain('code 2008');
+
+            await dev.update({'1': true}); // identical failure → quiet
+            expect(warn).toHaveBeenCalledTimes(1);
+            expect(debug).toHaveBeenCalledWith(expect.stringContaining('still failing'));
+        });
+
+        test('a command failure re-surfaces after an intervening success', async () => {
+            const api = makeApi();
+            api.getShadowProperties = jest.fn().mockResolvedValue([{code: 'switch_1', dp_id: 1, value: false}]);
+            const dev = makeDevice(api, null, {key: 'abc'});
+            await dev._connect();
+            const warn = jest.spyOn(log, 'warn');
+
+            api.sendCommands.mockRejectedValueOnce(new Error('command or value not support (code 2008)'));
+            await dev.update({'1': true});
+            expect(warn).toHaveBeenCalledTimes(1);
+
+            api.sendCommands.mockResolvedValueOnce(true); // success clears the dedup
+            await dev.update({'1': true});
+
+            api.sendCommands.mockRejectedValueOnce(new Error('command or value not support (code 2008)'));
+            await dev.update({'1': true});
+            expect(warn).toHaveBeenCalledTimes(2);
         });
     });
 });
