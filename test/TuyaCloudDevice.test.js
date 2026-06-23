@@ -293,6 +293,51 @@ describe('TuyaCloudDevice', () => {
         expect(api.getStatus).toHaveBeenCalledWith('dev1');
     });
 
+    describe('cloud state sync', () => {
+        test('the post-write catch-up re-reads the shadow and emits the resulting change', async () => {
+            const api = makeApi();
+            let rs = 13;
+            api.getShadowProperties = jest.fn(async () => [{code: 'return_state', dp_id: 105, value: rs}]);
+            const dev = makeDevice(api, null, {key: 'abc'});
+            await dev._connect(); // state: return_state=13, '105'=13
+
+            const changes = [];
+            dev.on('change', c => changes.push(c));
+            rs = 12; // the gate is now "opening" in the cloud
+            await dev._catchupOnce();
+            expect(changes[0]).toEqual({return_state: 12, '105': 12});
+        });
+
+        test('a successful cloud write arms a state catch-up', async () => {
+            const api = makeApi();
+            api.getShadowProperties = jest.fn().mockResolvedValue([{code: 'switch_1', dp_id: 1, value: false}]);
+            const dev = makeDevice(api, null, {key: 'abc'});
+            await dev._connect();
+            expect(dev._catchupTimers).toBeNull();
+            await dev.update({'1': true});
+            expect(Array.isArray(dev._catchupTimers)).toBe(true);
+            dev.stop();
+        });
+
+        test('a refresh reads via the shadow, so a thing-model device whose /status is empty still updates', async () => {
+            const api = makeApi();
+            let rs = 13;
+            api.getStatus = jest.fn().mockResolvedValue([]); // thing-model-only device: /status comes back empty
+            api.getShadowProperties = jest.fn(async () => [{code: 'return_state', dp_id: 105, value: rs}]);
+            const dev = makeDevice(api, null, {key: 'abc'});
+            await dev._connect();
+
+            const changes = [];
+            dev.on('change', c => changes.push(c));
+            rs = 12;
+            await dev._refreshState();
+
+            expect(api.getShadowProperties).toHaveBeenCalled();
+            expect(changes.some(c => c['105'] === 12)).toBe(true);
+            expect(dev.state['105']).toBe(12); // not wiped by the empty /status
+        });
+    });
+
     describe('connect-failure handling (no log spam)', () => {
         afterEach(() => jest.restoreAllMocks());
 
