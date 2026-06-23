@@ -144,6 +144,11 @@ optional, off-by-default flags read through `_debugConfig()` and coerced with
   the whole platform runs over the Tuya Cloud fallback. Lets the cloud path be
   exercised end-to-end without taking devices off the LAN (needs a configured
   `cloud` block to be useful).
+- `debug.logCloudHttp` — trace every Tuya Cloud HTTP request/response (method,
+  path, headers, body, status, response) at `debug`, with all credentials
+  (token, signature, password, access key/id, uid) redacted. Verbose and
+  per-request — keep it off in normal operation, and remember Homebridge
+  debug logging must be on to see it.
 
 ## Git & PR workflow
 
