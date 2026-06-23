@@ -10,7 +10,8 @@ function makeApi(status = [{code: 'switch_1', value: false}, {code: 'battery_per
         isConfigured: () => true,
         getStatus: jest.fn().mockResolvedValue(status),
         getDeviceInfo: jest.fn().mockResolvedValue({online: true}),
-        sendCommands: jest.fn().mockResolvedValue(true)
+        sendCommands: jest.fn().mockResolvedValue(true),
+        sendProperties: jest.fn().mockResolvedValue(true)
     };
 }
 
@@ -149,6 +150,96 @@ describe('TuyaCloudDevice', () => {
 
         dev.update({'1': true}); // a LAN-style numeric write
         expect(api.sendCommands).toHaveBeenCalledWith('dev1', [{code: 'switch_1', value: true}]);
+    });
+
+    test('a translated write is dispatched to the (iot-03) commands API', async () => {
+        const api = makeApi();
+        api.getShadowProperties = jest.fn().mockResolvedValue([{code: 'wfh_close', dp_id: 102, value: false}]);
+        const dev = makeDevice(api, null, {key: 'abc'});
+        await dev._connect();
+
+        await dev.update({'102': true});
+        expect(api.sendCommands).toHaveBeenCalledWith('dev1', [{code: 'wfh_close', value: true}]);
+        expect(api.sendProperties).not.toHaveBeenCalled();
+    });
+
+    // A fully-custom device (e.g. a gate controller) is rejected by every /commands
+    // API with 2008; the plugin must fall back to the thing-model property endpoint
+    // on its own, with no configuration.
+    describe('automatic control-endpoint fallback', () => {
+        const gate = async () => {
+            const api = makeApi();
+            api.getShadowProperties = jest.fn().mockResolvedValue([{code: 'wfh_close', dp_id: 102, value: false}]);
+            const dev = makeDevice(api, null, {key: 'abc'});
+            await dev._connect();
+            return {api, dev};
+        };
+
+        test('a 2008 from commands falls back to the thing-model property endpoint', async () => {
+            const {api, dev} = await gate();
+            api.sendCommands.mockRejectedValue(new Error('POST /v1.0/iot-03/devices/dev1/commands failed: command or value not support (code 2008)'));
+
+            await expect(dev.update({'102': true})).resolves.toBe(true);
+            expect(api.sendCommands).toHaveBeenCalledWith('dev1', [{code: 'wfh_close', value: true}]);
+            expect(api.sendProperties).toHaveBeenCalledWith('dev1', [{code: 'wfh_close', value: true}]);
+        });
+
+        test('once the property endpoint works it is used directly (no repeat doomed command)', async () => {
+            const {api, dev} = await gate();
+            api.sendCommands.mockRejectedValue(new Error('command or value not support (code 2008)'));
+
+            await dev.update({'102': true}); // probes: commands → properties
+            await dev.update({'102': false}); // should go straight to properties
+            expect(api.sendCommands).toHaveBeenCalledTimes(1);
+            expect(api.sendProperties).toHaveBeenCalledTimes(2);
+        });
+
+        test('a non-instruction failure (network) does NOT probe the thing model', async () => {
+            const {api, dev} = await gate();
+            api.sendCommands.mockRejectedValue(new Error('request timed out'));
+
+            await expect(dev.update({'102': true})).resolves.toBe(false);
+            expect(api.sendProperties).not.toHaveBeenCalled();
+        });
+
+        test('the property fallback is probed only once when it also fails', async () => {
+            const {api, dev} = await gate();
+            api.sendCommands.mockRejectedValue(new Error('command or value not support (code 2008)'));
+            api.sendProperties.mockRejectedValue(new Error('command or value not support (code 2008)'));
+
+            await dev.update({'102': true});
+            await dev.update({'102': true});
+            expect(api.sendProperties).toHaveBeenCalledTimes(1);
+            expect(api.sendCommands).toHaveBeenCalledTimes(2);
+        });
+
+        // The crux: a single device with a normal DP (standard instruction set) and
+        // a custom DP (thing model only) must drive EACH over its own endpoint.
+        test('a mixed device routes each data-point to the endpoint it accepts', async () => {
+            const api = makeApi();
+            api.getShadowProperties = jest.fn().mockResolvedValue([
+                {code: 'switch_1', dp_id: 1, value: false},   // standard → commands
+                {code: 'wfh_open', dp_id: 101, value: false}  // custom → properties only
+            ]);
+            // The commands API accepts switch_1 but rejects any batch containing wfh_open.
+            api.sendCommands.mockImplementation((id, cmds) =>
+                cmds.some(c => c.code === 'wfh_open')
+                    ? Promise.reject(new Error('command or value not support (code 2008)'))
+                    : Promise.resolve(true));
+            const dev = makeDevice(api, null, {key: 'abc'});
+            await dev._connect();
+
+            await dev.update({'1': true});    // learns switch_1 → commands
+            await dev.update({'101': true});  // commands 2008 → learns wfh_open → properties
+
+            api.sendCommands.mockClear();
+            api.sendProperties.mockClear();
+
+            // A write touching both now splits: switch_1 over commands, wfh_open over properties.
+            await expect(dev.update({'1': false, '101': true})).resolves.toBe(true);
+            expect(api.sendCommands).toHaveBeenCalledWith('dev1', [{code: 'switch_1', value: false}]);
+            expect(api.sendProperties).toHaveBeenCalledWith('dev1', [{code: 'wfh_open', value: true}]);
+        });
     });
 
     test('realtime code-only deltas are mirrored to numeric ids via the learned map', async () => {
@@ -352,6 +443,99 @@ describe('TuyaCloudDevice', () => {
             } finally {
                 jest.useRealTimers();
             }
+        });
+    });
+
+    describe('write-failure handling (no log spam)', () => {
+        afterEach(() => jest.restoreAllMocks());
+
+        // A LAN-style accessory (numeric dps) over a cloud project that never
+        // learned the id→code map: the write can't be addressed, so it must not be
+        // fired (it would always be a 2008), and the cause is surfaced just once.
+        test('a numeric write with no learned code map is skipped, not sent, and surfaced once', async () => {
+            const api = makeApi(); // /status only → no dp map
+            const dev = makeDevice(api, null, {key: 'abc'}); // LAN-capable, LAN down here
+            await dev._connect();
+            expect(dev.codeByDpId).toEqual({});
+
+            const warn = jest.spyOn(log, 'warn');
+            const debug = jest.spyOn(log, 'debug');
+
+            expect(dev.update({'1': true})).toBe(false);
+            expect(api.sendCommands).not.toHaveBeenCalled();
+            expect(warn).toHaveBeenCalledTimes(1);
+            expect(warn.mock.calls[0][0]).toContain('over the Tuya Cloud');
+
+            dev.update({'1': true}); // identical → quiet at debug, still not sent
+            expect(warn).toHaveBeenCalledTimes(1);
+            expect(debug).toHaveBeenCalledWith(expect.stringContaining('cloud write skipped'));
+            expect(api.sendCommands).not.toHaveBeenCalled();
+        });
+
+        test('the undeliverable-write note is harmless (debug) while the device is reachable over the LAN', async () => {
+            const dev = makeDevice(makeApi(), null, {key: 'abc', isLanConnected: () => true});
+            await dev._connect();
+            const warn = jest.spyOn(log, 'warn');
+            const debug = jest.spyOn(log, 'debug');
+
+            expect(dev.update({'1': true})).toBe(false);
+            expect(warn).not.toHaveBeenCalled();
+            expect(debug).toHaveBeenCalledWith(expect.stringContaining('over the Tuya Cloud'));
+        });
+
+        test('a cloud-only device (no key) surfaces the undeliverable write at error level', async () => {
+            const dev = makeDevice(makeApi()); // no key → cloud is the only path
+            await dev._connect();
+            const error = jest.spyOn(log, 'error');
+            const warn = jest.spyOn(log, 'warn');
+
+            expect(dev.update({'1': true})).toBe(false);
+            expect(warn).not.toHaveBeenCalled();
+            expect(error).toHaveBeenCalledTimes(1);
+        });
+
+        // A genuinely dispatched command that the cloud rejects (e.g. a real 2008
+        // on a mapped code): surface once, then suppress identical repeats to debug.
+        test('a repeated cloud command failure is surfaced once then suppressed to debug', async () => {
+            const api = makeApi();
+            api.getShadowProperties = jest.fn().mockResolvedValue([{code: 'switch_1', dp_id: 1, value: false}]);
+            const dev = makeDevice(api, null, {key: 'abc'});
+            await dev._connect();
+
+            const warn = jest.spyOn(log, 'warn');
+            const debug = jest.spyOn(log, 'debug');
+            const ex = new Error('POST /v1.0/iot-03/devices/dev1/commands failed: command or value not support (code 2008)');
+            api.sendCommands.mockRejectedValue(ex);
+            api.sendProperties.mockRejectedValue(ex); // thing-model fallback can't rescue it either
+
+            await dev.update({'1': true}); // mapped → dispatched → rejected by both endpoints
+            expect(api.sendCommands).toHaveBeenCalledWith('dev1', [{code: 'switch_1', value: true}]);
+            expect(warn).toHaveBeenCalledTimes(1);
+            expect(warn.mock.calls[0][0]).toContain('code 2008');
+
+            await dev.update({'1': true}); // identical failure → quiet
+            expect(warn).toHaveBeenCalledTimes(1);
+            expect(debug).toHaveBeenCalledWith(expect.stringContaining('still failing'));
+        });
+
+        test('a command failure re-surfaces after an intervening success', async () => {
+            const api = makeApi();
+            api.getShadowProperties = jest.fn().mockResolvedValue([{code: 'switch_1', dp_id: 1, value: false}]);
+            const dev = makeDevice(api, null, {key: 'abc'});
+            await dev._connect();
+            const warn = jest.spyOn(log, 'warn');
+            api.sendProperties.mockRejectedValue(new Error('command or value not support (code 2008)')); // fallback can't rescue
+
+            api.sendCommands.mockRejectedValueOnce(new Error('command or value not support (code 2008)'));
+            await dev.update({'1': true});
+            expect(warn).toHaveBeenCalledTimes(1);
+
+            api.sendCommands.mockResolvedValueOnce(true); // success clears the dedup
+            await dev.update({'1': true});
+
+            api.sendCommands.mockRejectedValueOnce(new Error('command or value not support (code 2008)'));
+            await dev.update({'1': true});
+            expect(warn).toHaveBeenCalledTimes(2);
         });
     });
 });
