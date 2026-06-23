@@ -342,6 +342,19 @@ describe('TuyaCloudDevice', () => {
             dev.stop();
         });
 
+        test('a realtime update cancels the pending catch-up (no redundant read on MQTT-covered devices)', async () => {
+            const api = makeApi();
+            api.getShadowProperties = jest.fn().mockResolvedValue([{code: 'switch_1', dp_id: 1, value: false}]);
+            const dev = makeDevice(api, null, {key: 'abc'});
+            await dev._connect();
+            await dev.update({'1': true});
+            expect(Array.isArray(dev._catchupTimers)).toBe(true);
+
+            dev._onRealtime([{code: 'switch_1', value: true}]); // MQTT delivers → catch-up not needed
+            expect(dev._catchupTimers).toBeNull();
+            dev.stop();
+        });
+
         test('a refresh reads via the shadow, so a thing-model device whose /status is empty still updates', async () => {
             const api = makeApi();
             let rs = 13;
