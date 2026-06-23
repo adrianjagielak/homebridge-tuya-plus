@@ -173,7 +173,7 @@ describe('TuyaCloudApi — endpoints', () => {
         const ok = await api.sendCommands('dev', [{code: 'switch_1', value: true}]);
         expect(ok).toBe(true);
         expect(captured.method).toBe('POST');
-        expect(captured.path).toBe('/v1.0/devices/dev/commands');
+        expect(captured.path).toBe('/v1.0/iot-03/devices/dev/commands');
         expect(captured.body).toEqual({commands: [{code: 'switch_1', value: true}]});
     });
 
@@ -181,6 +181,35 @@ describe('TuyaCloudApi — endpoints', () => {
         const api = ready();
         api._httpsRequest = jest.fn();
         await expect(api.sendCommands('dev', [])).resolves.toBe(true);
+        expect(api._httpsRequest).not.toHaveBeenCalled();
+    });
+
+    test('getStatus reads from the iot-03 device endpoint', async () => {
+        const api = ready();
+        let path;
+        api._httpsRequest = async (method, p) => { path = p; return {success: true, result: []}; };
+        await api.getStatus('dev');
+        expect(path).toBe('/v1.0/iot-03/devices/dev/status');
+    });
+
+    test('sendProperties issues thing-model properties as a JSON-string body', async () => {
+        const api = ready();
+        let captured;
+        api._httpsRequest = async (method, path, headers, bodyStr) => {
+            captured = {method, path, body: JSON.parse(bodyStr)};
+            return {success: true, result: true};
+        };
+        const ok = await api.sendProperties('dev', [{code: 'wfh_close', value: true}]);
+        expect(ok).toBe(true);
+        expect(captured.method).toBe('POST');
+        expect(captured.path).toBe('/v2.0/cloud/thing/dev/shadow/properties/issue');
+        expect(captured.body).toEqual({properties: JSON.stringify({wfh_close: true})});
+    });
+
+    test('sendProperties short-circuits on an empty command list', async () => {
+        const api = ready();
+        api._httpsRequest = jest.fn();
+        await expect(api.sendProperties('dev', [])).resolves.toBe(true);
         expect(api._httpsRequest).not.toHaveBeenCalled();
     });
 

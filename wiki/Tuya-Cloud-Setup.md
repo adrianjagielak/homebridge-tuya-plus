@@ -69,3 +69,15 @@ Add a **top-level `cloud` block** with your credentials:
 ### Security note
 
 Your **Access Secret** and app password are sensitive. Keep them only in your Homebridge `config.json`. If you ever share a config for support, redact them.
+
+## Troubleshooting
+
+### A device reads fine over the cloud but won't accept commands (`command or value not support`, code `2008` / `2003`)
+
+The plugin controls devices through Tuya's current **`iot-03`** device API (`POST /v1.0/iot-03/devices/{id}/commands`), the same one tinytuya and the official Tuya Homebridge plugin use. That works for almost everything.
+
+Some **custom data-points** (e.g. a gate/garage controller's open/close/stop) aren't in the device's standard instruction set — `/commands` answers `2003`/`2008` for them — yet the cloud still models them as **thing-model properties** (their status reads fine, and the device acts on the same write over the LAN). For these, **you don't need to configure anything**: when a `/commands` write is rejected with `2008`/`2003`, the plugin automatically retries it through Tuya's thing-model endpoint (`POST /v2.0/cloud/thing/{id}/shadow/properties/issue`) — which is how Tuya's own app drives such a device — and remembers the working endpoint **per data-point**. So a device that mixes ordinary DPs (a switch) with custom ones (a trigger) drives each over the endpoint it accepts; the standard commands API is always tried first.
+
+If a write fails on **both** endpoints, the data-point is genuinely **report-only** for that device (its Tuya product defines it that way), which only the manufacturer can change — there's no cloud workaround. Such devices still work normally over the **LAN**; only the cloud fallback can't drive them.
+
+The undocumented `debug.logCloudHttp` switch logs the full (credential-redacted) request/response for every cloud call if you want to see exactly what was sent and how the cloud replied.
