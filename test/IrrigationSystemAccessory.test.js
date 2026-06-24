@@ -422,6 +422,178 @@ describe('IrrigationSystemAccessory — device-side change reflection', () => {
     });
 });
 
+describe('IrrigationSystemAccessory — native (hardware) countdown', () => {
+    beforeEach(() => jest.useFakeTimers());
+    afterEach(() => { jest.clearAllTimers(); jest.useRealTimers(); });
+
+    /* --- data-point resolution --- */
+
+    test('derives each zone\'s countdown data-point as its switch dp + 16 by default', () => {
+        const { instance } = makeHarness();
+        expect(instance._getValveConfigs().map(c => c.dpCountdown)).toEqual(['17', '18', '19', '20']);
+    });
+
+    test('a custom zone may map an explicit countdown data-point', () => {
+        const { instance } = makeHarness({}, { valves: [{ name: 'Lawn', dp: 'switch_1', dpCountdown: 'countdown_1' }] });
+        const cfg = instance._getValveConfigs()[0];
+        expect(cfg.dpCountdown).toBe('countdown_1');
+        expect(cfg.countdownConfigured).toBe(true);
+    });
+
+    test('a code-addressed zone gets no default countdown dp (must be set explicitly)', () => {
+        const { instance } = makeHarness({}, { valves: [{ name: 'Lawn', dp: 'switch_1' }] });
+        expect(instance._getValveConfigs()[0].dpCountdown).toBe('');
+    });
+
+    /* --- seconds <-> minutes conversion --- */
+
+    test('converts SetDuration seconds to whole countdown minutes, never 0 for a real run', () => {
+        const { instance } = makeHarness({ '1': false, '17': 10 });
+        expect(instance._durationToCountdownMinutes(0)).toBe(0);        // indefinite stays indefinite
+        expect(instance._durationToCountdownMinutes(30)).toBe(1);       // sub-minute rounds up to 1, not 0
+        expect(instance._durationToCountdownMinutes(600)).toBe(10);
+        expect(instance._durationToCountdownMinutes(5400)).toBe(90);
+        expect(instance._durationToCountdownMinutes(999999)).toBe(120); // capped at the 120-min hardware max
+    });
+
+    /* --- THE pool-flood regression: writing a countdown opens the zone, so it
+     *     must never be written while a zone is off or on connect --- */
+
+    test('on connect, zones sitting at countdown 0 are NEVER written to (must not open them)', () => {
+        const { device } = makeHarness(
+            { '1': false, '2': false, '3': false, '4': false, '17': 0, '18': 0, '19': 0, '20': 0 },
+            { defaultDuration: 600 }
+        );
+        jest.advanceTimersByTime(2000);
+        expect(device.update).not.toHaveBeenCalled();
+    });
+
+    test('editing the Duration while a zone is OFF does not write to the device', () => {
+        const { accessory, device } = makeHarness({ '1': false, '17': 0 }, { defaultDuration: 600 });
+        valve(accessory, 1).getCharacteristic(Characteristic.SetDuration).triggerSet(1800);
+        jest.advanceTimersByTime(2000);
+        expect(device.update).not.toHaveBeenCalled();
+        // The new duration is remembered (read back via the getter) for the next switch-on.
+        expect(valve(accessory, 1).getCharacteristic(Characteristic.SetDuration).triggerGet()).toBe(1800);
+    });
+
+    /* --- turning a zone on hands the device its own timer (the offline safety net) --- */
+
+    test('turning a zone on sends the hardware countdown alongside the switch (one command)', () => {
+        const { accessory, device } = makeHarness({ '1': false, '17': 0 }, { defaultDuration: 600 });
+        valve(accessory, 1).getCharacteristic(Characteristic.Active).triggerSet(1);
+        jest.advanceTimersByTime(500);
+        expect(device.update).toHaveBeenCalledTimes(1);
+        // The countdown rides along so the device closes the valve itself even if
+        // Homebridge/the network drops while it's running.
+        expect(device.update).toHaveBeenCalledWith({ '1': true, '17': 10 });
+    });
+
+    test('master ON hands every zone its hardware countdown in one command', () => {
+        const { accessory, device } = makeHarness(
+            { '1': false, '2': false, '3': false, '4': false, '17': 0, '18': 0, '19': 0, '20': 0 },
+            { defaultDuration: 600 }
+        );
+        irrigation(accessory).getCharacteristic(Characteristic.Active).triggerSet(1);
+        jest.advanceTimersByTime(500);
+        expect(device.update).toHaveBeenCalledTimes(1);
+        expect(device.update).toHaveBeenCalledWith({ '1': true, '2': true, '3': true, '4': true, '17': 10, '18': 10, '19': 10, '20': 10 });
+    });
+
+    test('an indefinite duration turns the zone on with an unbounded (0) countdown', () => {
+        const { accessory, device } = makeHarness({ '1': false, '17': 0 }, { defaultDuration: 0 });
+        valve(accessory, 1).getCharacteristic(Characteristic.Active).triggerSet(1);
+        jest.advanceTimersByTime(500);
+        expect(device.update).toHaveBeenCalledTimes(1);
+        expect(device.update).toHaveBeenCalledWith({ '1': true, '17': 0 });
+    });
+
+    test('a sub-minute duration turns the zone on with a 1-min countdown, never 0', () => {
+        const { accessory, device } = makeHarness({ '1': false, '17': 0 }, { defaultDuration: 30 });
+        valve(accessory, 1).getCharacteristic(Characteristic.Active).triggerSet(1);
+        jest.advanceTimersByTime(500);
+        expect(device.update).toHaveBeenCalledWith({ '1': true, '17': 1 });
+    });
+
+    test('changing the Duration while a zone is RUNNING re-bases the hardware countdown', () => {
+        const { accessory, device } = makeHarness({ '1': false, '17': 0 }, { defaultDuration: 600 });
+        const v = valve(accessory, 1);
+        v.getCharacteristic(Characteristic.Active).triggerSet(1);
+        jest.advanceTimersByTime(500);
+        device.update.mockClear();
+        v.getCharacteristic(Characteristic.SetDuration).triggerSet(1200);
+        jest.advanceTimersByTime(500);
+        expect(device.update).toHaveBeenCalledWith({ '17': 20 });
+    });
+
+    test('the software timer still closes the zone after the duration, even with a hardware countdown set', () => {
+        // Belt-and-suspenders: if the hardware countdown is unreliable (e.g. the
+        // device clears it mid-run), Homebridge itself still switches the zone off
+        // once the duration elapses — independent of the hardware countdown.
+        const { accessory, device } = makeHarness({ '1': false, '17': 0 }, { defaultDuration: 60 });
+        const v = valve(accessory, 1);
+        v.getCharacteristic(Characteristic.Active).triggerSet(1);
+        jest.advanceTimersByTime(500);
+        expect(device.update).toHaveBeenCalledWith({ '1': true, '17': 1 }); // on + 1-min hardware countdown
+        device.update.mockClear();
+
+        jest.advanceTimersByTime(60 * 1000);   // the HomeKit duration elapses
+        expect(v.getCharacteristic(Characteristic.Active).value).toBe(0);
+        jest.advanceTimersByTime(500);         // flush the off-write
+        expect(device.update).toHaveBeenCalledWith({ '1': false });
+    });
+
+    /* --- zones turned on at the device (physical button / Tuya app) --- */
+
+    test('a zone switched on at the device with no countdown is given one so it still auto-closes', () => {
+        const { device } = makeHarness({ '1': false, '17': 0 }, { defaultDuration: 600 });
+        device.update.mockClear();
+        device.emitChange({ '1': true });               // external on; device countdown still 0
+        jest.advanceTimersByTime(500);
+        expect(device.update).toHaveBeenCalledWith({ '17': 10 });
+    });
+
+    test('a zone switched on at the device with a valid countdown is left as the device set it', () => {
+        const { device } = makeHarness({ '1': false, '17': 0 }, { defaultDuration: 600 });
+        device.update.mockClear();
+        device.emitChange({ '1': true, '17': 5 });      // external on with its own 5-min run
+        jest.advanceTimersByTime(500);
+        expect(device.update).not.toHaveBeenCalled();
+    });
+
+    test('an externally-started zone is left alone when its HomeKit duration is indefinite', () => {
+        const { device } = makeHarness({ '1': false, '17': 0 }, { defaultDuration: 0 });
+        device.update.mockClear();
+        device.emitChange({ '1': true });
+        jest.advanceTimersByTime(500);
+        expect(device.update).not.toHaveBeenCalled();
+    });
+
+    test('a zone already running at startup with no countdown is given one (offline-safe)', () => {
+        const { device } = makeHarness({ '1': true, '17': 0 }, { defaultDuration: 600 });
+        jest.advanceTimersByTime(500);
+        expect(device.update).toHaveBeenCalledWith({ '17': 10 });
+    });
+
+    /* --- opt-out & unsupported devices --- */
+
+    test('nativeCountdown:false never touches the countdown data-point', () => {
+        const { accessory, device } = makeHarness({ '1': false, '17': 0 }, { defaultDuration: 600, nativeCountdown: false });
+        valve(accessory, 1).getCharacteristic(Characteristic.Active).triggerSet(1);
+        jest.advanceTimersByTime(500);
+        expect(device.update).toHaveBeenCalledTimes(1);
+        expect(device.update).toHaveBeenCalledWith({ '1': true });
+    });
+
+    test('a device that reports no countdown data-point is unaffected (software timer only)', () => {
+        const { accessory, device } = makeHarness({ '1': false }, { defaultDuration: 600 });
+        valve(accessory, 1).getCharacteristic(Characteristic.Active).triggerSet(1);
+        jest.advanceTimersByTime(500);
+        expect(device.update).toHaveBeenCalledTimes(1);
+        expect(device.update).toHaveBeenCalledWith({ '1': true });
+    });
+});
+
 describe('IrrigationSystemAccessory — battery mapping', () => {
     test('clamps the level into 0–100', () => {
         const { instance } = makeHarness();

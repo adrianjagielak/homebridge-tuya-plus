@@ -792,9 +792,15 @@ The defaults match the common 4-zone layout (valves A–D on data-points `1`–`
 
 #### Per-zone timers and "indefinite" mode
 
-Each zone has its own **Duration**. When a zone is switched on it runs for that duration and the plugin closes it automatically (HomeKit's countdown is display-only — the plugin always enforces the shut-off, even after a Homebridge restart).
+Each zone has its own **Duration**. When a zone is switched on it runs for that duration and is then closed automatically. Two mechanisms enforce this together:
 
-* Set a zone's duration to **`0`** to make it run **indefinitely** (until it is switched off again) — handy for long, manual watering tasks.
+* a **software timer** in the plugin drives HomeKit's live countdown and the precise (sub-minute) shut-off while Homebridge is connected — it also closes a zone that was switched on at the device or that was already running when Homebridge restarted; and
+* the device's **own countdown timer**, when the controller exposes one (`countdown_1..n`, DP `17..` by default). When a zone is switched **on**, its run length (whole minutes) is sent to the hardware countdown in the *same command* as the switch, so the valve still closes on schedule **even if Homebridge or the network drops out while it's running** — the hardware closes itself. This is on by default whenever the device reports these data-points; set `nativeCountdown: false` to fall back to the software timer alone.
+
+> On these controllers the countdown is **not** a passive setting — *writing it starts a run and opens the zone*. So the plugin only ever sets it while switching a zone on (or for a zone that's already running); it is **never** written on connect or while a zone is off. The two mechanisms are belt-and-suspenders: the hardware countdown handles the offline case, and the software timer still switches the zone off after its Duration if the hardware countdown is unreliable. A zone switched on at the device with no usable countdown is given one (so it still auto-closes offline); a valid countdown the device set itself (e.g. a duration chosen in the Tuya app) is left alone.
+
+* Set a zone's duration to **`0`** to make it run **indefinitely** (until it is switched off again) — handy for long, manual watering tasks. (No finite hardware countdown is sent, so the device won't auto-close it either.)
+* The hardware countdown is whole **minutes**, capped by the device at **120 min**; HomeKit's Duration is in seconds. The value written is bounded by `maxDuration` (default `7200`s = 120 min) — lower `maxDuration` to e.g. `3600` to cap zone runs at 60 minutes.
 * Apple's Home app only offers duration presets up to **1 hour**. For longer runs (up to `maxDuration`) or to preset "indefinite" zones, set `defaultDuration` / the per-valve `defaultDuration` in the config, or use the Eve app.
 
 #### Master ("toggle all") switch
@@ -816,17 +822,23 @@ Switching the whole Irrigation System tile **off** closes every open zone, and s
     /* Simple: number of valves on sequential data-points 1, 2, 3, … */
     "valveCount": 4,
     /* …or, for custom names / non-sequential data-points, define them explicitly
-       (this overrides valveCount). defaultDuration is in seconds; 0 = indefinite. */
+       (this overrides valveCount). defaultDuration is in seconds; 0 = indefinite.
+       dpCountdown is the device's built-in auto-off timer for the zone; it
+       defaults to the switch dp + 16 (so switch 1 → countdown 17) and only needs
+       setting for code-addressed or non-standard zones. */
     "valves": [
         { "name": "Front Lawn", "dp": 1, "defaultDuration": 900 },
         { "name": "Back Lawn",  "dp": 2, "defaultDuration": 900 },
         { "name": "Flower Beds","dp": 3, "defaultDuration": 600 },
-        { "name": "Drip Line",  "dp": 4, "defaultDuration": 0 }
+        { "name": "Drip Line",  "dp": 4, "defaultDuration": 0, "dpCountdown": 20 }
     ],
 
     /* --- Timers --- */
     "defaultDuration": 600,   /* default per-zone run time, seconds (0 = indefinite) */
     "maxDuration": 7200,      /* upper bound advertised to HomeKit, seconds */
+    "nativeCountdown": true,  /* mirror durations to the device's own countdown timer
+                                 (countdown_1.., DP 17..) so zones still auto-close
+                                 offline; set false for software-timer-only */
 
     /* --- Master switch behaviour --- */
     "masterTurnsOnAllZones": true,
