@@ -68,6 +68,7 @@ function makeSimpleGarage(initialContext = {}) {
         updateValue: jest.fn().mockImplementation(function(v) { this.value = v; return this; }),
     };
     accessory.context.cachedTargetDoorState = TDS.CLOSED;
+    instance._committedTarget = TDS.CLOSED;
 
     // Mirror the persistent change listener registered in production.
     device.on('change', changes => instance._onDeviceChange(changes));
@@ -233,6 +234,7 @@ describe('SimpleGarageDoorAccessory.setTargetDoorState — close (stop-before-cl
     function openGate(instance, device, state = STATE_OPENING_OR_OPEN) {
         if (state !== undefined) device.state['105'] = state;
         instance.accessory.context.cachedTargetDoorState = TDS.OPEN;
+        instance._committedTarget = TDS.OPEN;
     }
 
     test('CLOSE fires immediately when the gate is already stopped (state 11)', () => {
@@ -328,6 +330,25 @@ describe('SimpleGarageDoorAccessory.setTargetDoorState — close (stop-before-cl
         jest.advanceTimersByTime(3000);
         instance.setTargetDoorState(TDS.CLOSED); // HomeKit's repeat close
         expect(device.update).toHaveBeenCalledTimes(2); // swallowed — no second stop/close
+    });
+
+    test('A stopped (11) report after the close does not re-enable the repeat (LAN stutter)', () => {
+        // Over the LAN the stop pulse makes the controller report 11 (=OPEN) just
+        // after the close has gone out — outside the stop-before-close window. That
+        // 11 must NOT move the committed target back to OPEN, or HomeKit's repeat
+        // close would fire a second stop-before-close into the already-closing gate.
+        const { instance, device } = makeSimpleGarage();
+        instance.stopBeforeCloseMs = 1500;
+        openGate(instance, device, STATE_OPENING_OR_OPEN);
+
+        instance.setTargetDoorState(TDS.CLOSED);
+        jest.advanceTimersByTime(1500);
+        expect(device.update).toHaveBeenCalledTimes(2); // stop + close
+
+        emitState(device, STATE_STOPPED); // the stop's late 11 report
+        expect(instance._committedTarget).toBe(TDS.CLOSED); // not bounced to OPEN
+        instance.setTargetDoorState(TDS.CLOSED); // HomeKit's repeat
+        expect(device.update).toHaveBeenCalledTimes(2); // swallowed
     });
 
     test('A close runs again once the gate is reported open (committed target tracks reports)', () => {
@@ -631,7 +652,7 @@ describe('SimpleGarageDoorAccessory — force switches', () => {
     test('Force Close fires the close action (immediately when already stopped)', () => {
         const { instance, device, accessory } = makeSimpleGarage();
         device.state['105'] = STATE_STOPPED;
-        accessory.context.cachedTargetDoorState = TDS.OPEN; // gate open → close is a real transition
+        instance._committedTarget = TDS.OPEN; // gate open → close is a real transition
 
         instance.setTargetDoorState(TDS.CLOSED);
 
