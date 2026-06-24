@@ -602,6 +602,53 @@ describe('SimpleGarageDoorAccessory._handlePartialOpen', () => {
         expect(device.update).toHaveBeenCalledTimes(3);
     });
 
+    test('A repeat of the partial open\'s own OPEN target does not cancel the pending auto-stop', () => {
+        // The partial open drives TargetDoorState to OPEN itself, then waits for
+        // the gate to report it's moving before arming the auto-stop. HomeKit
+        // re-sends that same OPEN in the meantime (a second controller echoing
+        // it, or its own retry). That swallowed repeat must NOT tear down the
+        // pending partial, or the gate runs all the way open instead of parking
+        // part-way — the reported bug.
+        const { instance, device } = makeSimpleGarage();
+        instance.partialOpenMs = 2000;
+        device.state['105'] = STATE_CLOSING_OR_CLOSED; // starts closed → stop waits for movement
+
+        instance._handlePartialOpen();
+        expect(device.update).toHaveBeenCalledTimes(1);
+        expect(device.update).toHaveBeenNthCalledWith(1, { '101': true }); // open
+        expect(instance.partialPending).toBe(true);
+
+        // HomeKit's repeat of the same OPEN lands before the gate reports moving.
+        instance.setTargetDoorState(TDS.OPEN);
+        expect(instance.partialPending).toBe(true); // still pending — not cancelled
+        expect(device.update).toHaveBeenCalledTimes(1); // and no second open
+
+        // The gate now reports it's moving: the countdown arms and the stop fires.
+        emitState(device, STATE_OPENING_OR_OPEN);
+        expect(instance.partialStopTimer).not.toBeNull();
+        jest.advanceTimersByTime(2000);
+        expect(device.update).toHaveBeenNthCalledWith(2, { '103': true }); // partial stop
+    });
+
+    test('A repeat of OPEN after the auto-stop is armed leaves the timer intact', () => {
+        const { instance, device } = makeSimpleGarage();
+        instance.partialOpenMs = 2000;
+        device.state['105'] = STATE_OPENING_OR_OPEN; // arms immediately
+
+        instance._handlePartialOpen();
+        expect(instance.partialStopTimer).not.toBeNull();
+
+        // A repeat OPEN partway through must not cancel or push out the timer.
+        jest.advanceTimersByTime(500);
+        instance.setTargetDoorState(TDS.OPEN);
+        expect(instance.partialStopTimer).not.toBeNull();
+        expect(device.update).toHaveBeenCalledTimes(1); // no second open
+
+        // The original 2000ms deadline still fires the stop.
+        jest.advanceTimersByTime(1500);
+        expect(device.update).toHaveBeenNthCalledWith(2, { '103': true });
+    });
+
     test('Does nothing when partialOpenMs is not configured', () => {
         const { instance, device } = makeSimpleGarage();
         instance.partialOpenMs = 0;
