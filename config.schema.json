@@ -758,6 +758,12 @@
                     "title": "Data-point (numeric id, or cloud code)",
                     "placeholder": "1 or switch_1"
                   },
+                  "dpCountdown": {
+                    "type": ["integer", "string"],
+                    "title": "Countdown data-point (numeric id, or cloud code)",
+                    "description": "Optional. The device's built-in auto-off timer for this zone. Defaults to the switch data-point + 16 (so switch 1 → countdown 17). Set this only for code-addressed or non-standard zones.",
+                    "placeholder": "17 or countdown_1"
+                  },
                   "defaultDuration": {
                     "type": "integer",
                     "title": "Default run time (seconds, 0 = run indefinitely)",
@@ -782,7 +788,16 @@
               "type": "integer",
               "title": "Maximum Run Time (seconds)",
               "placeholder": 7200,
-              "description": "Upper bound advertised to HomeKit for the duration picker (HAP default is 3600 / 1h). Apple's Home app only offers presets up to 1h regardless; longer values can be set from the config or apps like Eve.",
+              "description": "Upper bound advertised to HomeKit for the duration picker (HAP default is 3600 / 1h). Apple's Home app only offers presets up to 1h regardless; longer values can be set from the config or apps like Eve. Also bounds the hardware countdown: a device countdown longer than this (or the 120-min hardware cap) is corrected on connect.",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "nativeCountdown": {
+              "type": "boolean",
+              "title": "Use the device's built-in countdown timer",
+              "placeholder": true,
+              "description": "When the controller exposes per-zone countdown data-points (countdown_1.., DP 17.. by default), mirror each zone's duration to the hardware timer so a zone still auto-closes on schedule even if Homebridge or the network drops out mid-run. Disable to fall back to the software-timer-only behaviour. Has no effect on devices that don't report a countdown data-point.",
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type);"
               }
