@@ -1,7 +1,7 @@
 {
   "name": "homebridge-tuya-plus",
   "version": "3.13.0",
-  "description": "A community-maintained Homebridge plugin for controlling Tuya devices in HomeKit. LAN-first, with an optional Tuya Cloud fallback for any device the LAN can't reach.",
+  "description": "A community-maintained Homebridge plugin for controlling Tuya devices locally over LAN, with an optional Tuya Cloud fallback for whatever the LAN can't reach. Includes new features, fixes, and updated device support. PRs welcome: if it runs, it ships (almost).",
   "main": "index.js",
   "scripts": {
     "test": "jest",
