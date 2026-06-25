@@ -758,7 +758,8 @@ Multi-valve Tuya irrigation/sprinkler controllers (the battery-powered Wi-Fi "fa
 
 * one **Irrigation System** tile that contains every zone,
 * one **Valve** per zone (`ValveType = Irrigation`) — each with its own on/off, its own **Duration** picker and a live countdown,
-* an optional **Battery** service (level, low-battery warning, and — for solar/USB-C rechargeable units that report it — live charging status).
+* an optional **Battery** service (level, low-battery warning, and — for solar/USB-C rechargeable units that report it — live charging status),
+* a **Leak Detected** characteristic on the system tile for controllers with a rain sensor (`rain_sensor_state`, DP `49`) — HomeKit reports a leak while it's raining, so you can be notified or automate on it.
 
 Because these devices are slow to respond, all zone changes that happen close together — turning the whole system on/off, or running a scene that toggles several zones — are merged into a **single** Tuya command instead of a burst of them.
 
@@ -807,6 +808,12 @@ Each zone has its own **Duration**. When a zone is switched on it runs for that 
 
 Switching the whole Irrigation System tile **off** closes every open zone, and switching it **on** opens every zone — each as one combined command (mirroring the physical "all" button many of these controllers have). Either direction can be disabled with `masterTurnsOffAllZones` / `masterTurnsOnAllZones`.
 
+#### Rain sensor
+
+Controllers with a rain sensor report it on `rain_sensor_state` (DP `49`, an enum of `rain` / `no_rain`). The plugin surfaces this as a **Leak Detected** characteristic **on the Irrigation System tile itself** — `rain` reads as "leak detected", anything else as "no leak". HomeKit can then show the rainfall state and drive notifications or automations from it (e.g. skip a watering scene while it's raining).
+
+It's deliberately carried on the system tile rather than as a separate sensor accessory: a standalone sensor makes the Home app split the sprinkler into sub-accessories and blocks control from the main tile. There's nothing to turn on — it's present by default, and stays "no leak" on controllers that don't report a rain sensor. The data-point defaults to DP `49` and can be remapped with `dpRainState` (e.g. to the `rain_sensor_state` code on a cloud device).
+
 #### Full Configuration
 
 ```json5
@@ -844,6 +851,9 @@ Switching the whole Irrigation System tile **off** closes every open zone, and s
     "masterTurnsOnAllZones": true,
     "masterTurnsOffAllZones": true,
     "commandDebounce": 500,   /* ms window for merging zone changes into one command */
+
+    /* --- Rain sensor (shown as Leak Detected on the system tile) --- */
+    "dpRainState": 49,   /* enum rain/no_rain DP; omit to use the default, or if not reported */
 
     /* --- Battery (omit / set noBattery:true if mains-powered) --- */
     "dpBattery": 46,

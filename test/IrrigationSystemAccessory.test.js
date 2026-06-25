@@ -645,6 +645,76 @@ describe('IrrigationSystemAccessory — charging state', () => {
     });
 });
 
+describe('IrrigationSystemAccessory — rain sensor (LeakDetected)', () => {
+    test('exposes LeakDetected on the IrrigationSystem service itself (no separate sensor service)', () => {
+        const { accessory } = makeHarness({ '1': false, '49': 'no_rain' });
+        const irr = irrigation(accessory);
+        expect(irr.getCharacteristic(Characteristic.LeakDetected).value)
+            .toBe(Characteristic.LeakDetected.LEAK_NOT_DETECTED);
+        // A standalone sensor service would fragment the sprinkler tile — it must
+        // never be created; the state rides on the system service instead.
+        expect(accessory.getService(Service.LeakSensor)).toBeUndefined();
+        expect(accessory.getService(Service.ContactSensor)).toBeUndefined();
+    });
+
+    test('reports a leak while the device reports "rain"', () => {
+        const { accessory } = makeHarness({ '1': false, '49': 'rain' });
+        expect(irrigation(accessory).getCharacteristic(Characteristic.LeakDetected).value)
+            .toBe(Characteristic.LeakDetected.LEAK_DETECTED);
+    });
+
+    test('defaults to "no leak" when the device never reports the rain sensor', () => {
+        const { accessory } = makeHarness({ '1': false });
+        expect(irrigation(accessory).getCharacteristic(Characteristic.LeakDetected).value)
+            .toBe(Characteristic.LeakDetected.LEAK_NOT_DETECTED);
+    });
+
+    test('a device-side rain change is mirrored onto LeakDetected', () => {
+        const { accessory, device } = makeHarness({ '1': false, '49': 'no_rain' });
+        const leak = irrigation(accessory).getCharacteristic(Characteristic.LeakDetected);
+
+        device.emitChange({ '49': 'rain' });
+        expect(leak.value).toBe(Characteristic.LeakDetected.LEAK_DETECTED);
+
+        device.emitChange({ '49': 'no_rain' });
+        expect(leak.value).toBe(Characteristic.LeakDetected.LEAK_NOT_DETECTED);
+    });
+
+    test('onGet reflects the live device state', () => {
+        const { accessory, device } = makeHarness({ '1': false, '49': 'no_rain' });
+        const leak = irrigation(accessory).getCharacteristic(Characteristic.LeakDetected);
+        device.state['49'] = 'rain';
+        expect(leak.triggerGet()).toBe(Characteristic.LeakDetected.LEAK_DETECTED);
+    });
+
+    test('onGet throws while disconnected (HomeKit shows "No Response")', () => {
+        const { accessory, device } = makeHarness({ '1': false, '49': 'no_rain' });
+        device.connected = false;
+        expect(() => irrigation(accessory).getCharacteristic(Characteristic.LeakDetected).triggerGet()).toThrow();
+    });
+
+    test('_leakDetected maps only "rain" (case/space-insensitive) to a leak', () => {
+        const { instance } = makeHarness({ '1': false });
+        expect(instance._leakDetected('rain')).toBe(Characteristic.LeakDetected.LEAK_DETECTED);
+        expect(instance._leakDetected(' RAIN ')).toBe(Characteristic.LeakDetected.LEAK_DETECTED);
+        expect(instance._leakDetected('no_rain')).toBe(Characteristic.LeakDetected.LEAK_NOT_DETECTED);
+        expect(instance._leakDetected(undefined)).toBe(Characteristic.LeakDetected.LEAK_NOT_DETECTED);
+        expect(instance._leakDetected(null)).toBe(Characteristic.LeakDetected.LEAK_NOT_DETECTED);
+    });
+
+    test('a custom dpRainState data-point (e.g. a Tuya code) is honoured', () => {
+        const { accessory, device } = makeHarness(
+            { '1': false, rain_sensor_state: 'rain' },
+            { dpRainState: 'rain_sensor_state' }
+        );
+        const leak = irrigation(accessory).getCharacteristic(Characteristic.LeakDetected);
+        expect(leak.value).toBe(Characteristic.LeakDetected.LEAK_DETECTED);
+
+        device.emitChange({ rain_sensor_state: 'no_rain' });
+        expect(leak.value).toBe(Characteristic.LeakDetected.LEAK_NOT_DETECTED);
+    });
+});
+
 describe('IrrigationSystemAccessory — data-points addressed by code', () => {
     // The accessory is transport-agnostic: a data-point may be a numeric id or a
     // Tuya "code". The LAN+cloud TuyaDevice keeps state dual-keyed and translates
