@@ -862,6 +862,15 @@
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type) && !model.devices[arrayIndices].noBattery;"
               }
+            },
+            "dpRainState": {
+              "type": ["integer", "string"],
+              "placeholder": "49 or rain_sensor_state",
+              "title": "Rain-sensor data-point (numeric id, or cloud code)",
+              "description": "Enum data-point reporting rainfall ('rain' / 'no_rain'), surfaced as a Leak Detected characteristic on the irrigation system so HomeKit can notify and automate on rain. Defaults to DP 49; if your controller doesn't report it, Leak Detected simply stays clear.",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type);"
+              }
             }
           }
         }
