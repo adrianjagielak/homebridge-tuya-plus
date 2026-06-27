@@ -93,6 +93,23 @@ function coerceBoolean(value, defaultValue) {
         : df;
 }
 
+// Return a drop-in replacement for the Homebridge logger whose .debug() emits
+// at info level instead, leaving every other method (and the callable form)
+// untouched. Wrapping the platform's logger once and threading it down to every
+// device/accessory/cloud component promotes the plugin's whole debug stream to
+// info, so users can capture its verbose protocol/state logging without turning
+// on Homebridge's global debug mode (debug.logDebugAsInfo).
+function promoteDebugToInfo(log) {
+  const wrapped = (...args) => log(...args);
+  for (const key of ['info', 'warn', 'error', 'log']) {
+    if (typeof log[key] === 'function')
+      wrapped[key] = (...args) => log[key](...args);
+  }
+  wrapped.debug = (...args) => log.info(...args);
+  if ('prefix' in log) wrapped.prefix = log.prefix;
+  return wrapped;
+}
+
 module.exports = function (homebridge) {
   ({
     platformAccessory: PlatformAccessory,
@@ -113,6 +130,14 @@ module.exports = function (homebridge) {
 class TuyaLan {
   constructor(...props) {
     [this.log, this.config, this.api] = [...props];
+
+    // Apply before anything logs so the very first lines already honour it.
+    if (this.config && coerceBoolean(this._debugConfig().logDebugAsInfo)) {
+      this.log = promoteDebugToInfo(this.log);
+      this.log.info(
+        'debug.logDebugAsInfo is set: routing all debug logging to info.',
+      );
+    }
 
     this.cachedAccessories = new Map();
     // One TuyaDevice per configured device, keyed by Tuya id, so discovery can
