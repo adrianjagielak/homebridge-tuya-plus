@@ -446,6 +446,17 @@
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['AirConditioner'].includes(model.devices[arrayIndices].type);"
               }
             },
+            "fanSpeedValues": {
+              "type": "array",
+              "title": "Fan Speed Values",
+              "description": "String values used by the device for each fan speed, e.g. ['low', 'middle', 'high'].",
+              "items": {
+                "type": "string"
+              },
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['AirConditioner'].includes(model.devices[arrayIndices].type);"
+              }
+            },
             "noChildLock": {
               "type": "boolean",
               "condition": {
