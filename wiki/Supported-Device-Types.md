@@ -234,12 +234,14 @@ The fan speed data-point (DP `5`, `windspeed`) is usually an **enum of string va
 
 For devices that use named string values such as `"low"`, `"middle"` and `"high"`, set `fanSpeedValues` instead:
 
-```json
-"fanSpeedValues": [
-  "low",
-  "middle",
-  "high"
-]
+```json5
+{
+    "fanSpeedValues": [
+        "low",
+        "middle",
+        "high"
+    ]
+}
 ```
 
 This maps HomeKit's 0–100% slider across the configured values in order. For the example above:
