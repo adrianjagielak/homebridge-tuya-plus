@@ -245,10 +245,10 @@ For devices that use named string values such as `"low"`, `"middle"` and `"high"
 ```
 
 This maps HomeKit's 0–100% slider across the configured values in order. For the example above:
-
-- 1–34% → `"low"`
-- 35–67% → `"middle"`
-- 68–100% → `"high"`
+- 0% → Off (turns the AC off)
+- 1–34% → "low"
+- 35–67% → "middle"
+- 68–100% → "high"
 
 Many ACs have no child-lock data-point; if yours doesn't, set `noChildLock: true` so the plugin doesn't add a (non-functional) lock control. Likewise, set `noRotationSpeed: true` if the device has no fan-speed control.
 
