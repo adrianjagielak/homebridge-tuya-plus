@@ -20,6 +20,8 @@ function makeFanLight(state = {}, context = {}) {
     instance.fanDefaultSpeed = parseInt(device.context.fanDefaultSpeed) || 1;
     instance.fanCurrentSpeed = 0;
     instance.useStrings = instance._coerceBoolean(device.context.useStrings, true);
+    instance.useStringsFan = instance._coerceBoolean(device.context.useStringsFan, instance.useStrings);
+    instance.useStringsLight = instance._coerceBoolean(device.context.useStringsLight, instance.useStrings);
     instance.singleDpWrites = instance._coerceBoolean(device.context.singleDpWrites, false);
     if (device.context.minWhiteColor !== undefined) instance.minWhiteColor = parseInt(device.context.minWhiteColor);
     if (device.context.maxWhiteColor !== undefined) instance.maxWhiteColor = parseInt(device.context.maxWhiteColor);
@@ -296,4 +298,19 @@ describe('SimpleFanLightAccessory.getColorTemp / setColorTemp', () => {
         await expect(instance.setColorTemp(370)).rejects.toBeInstanceOf(HAP.HapStatusError);
         expect(device.update).not.toHaveBeenCalled();
     });
+
+    test('setColorTemp respects useStringsLight: false independently of useStrings', () => {
+        const { instance, device } = makeFanLight({ '23': 500 }, { useStrings: true, useStringsLight: false });
+        instance.setColorTemp(154); // cool end -> Tuya 1000
+        expect(device.update).toHaveBeenCalledWith({ '23': 1000 });
+    });
 });
+
+describe('SimpleFanLightAccessory — useStringsFan / useStringsLight independent config', () => {
+    test('setSpeed respects useStringsFan: false independently of useStrings', () => {
+        const { instance, device } = makeFanLight({ '60': false, '62': 1 }, { useStrings: true, useStringsFan: false });
+        instance.setSpeed(100);
+        expect(device.update).toHaveBeenCalledWith({ '60': true, '62': 6 });
+    });
+});
+
