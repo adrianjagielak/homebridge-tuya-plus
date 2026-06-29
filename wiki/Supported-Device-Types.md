@@ -232,6 +232,24 @@ Tuya devices don't follow a unified pattern for naming the modes, for example co
 
 The fan speed data-point (DP `5`, `windspeed`) is usually an **enum of string values** like `"1"`, `"2"`, `"3"`. Set `fanSpeedSteps` to the number of speeds (e.g. `3`); this both maps HomeKit's 0–100 % slider onto the right number of steps and — importantly — sends the speed as a string, which these firmwares require. Without it the fan may silently ignore speed changes.
 
+For devices that use named string values such as `"low"`, `"middle"` and `"high"`, set `fanSpeedValues` instead:
+
+```json5
+{
+    "fanSpeedValues": [
+        "low",
+        "middle",
+        "high"
+    ]
+}
+```
+
+This maps HomeKit's 0–100% slider across the configured values in order. For the example above:
+- 0% → Off (turns the AC off)
+- 1–34% → "low"
+- 35–67% → "middle"
+- 68–100% → "high"
+
 Many ACs have no child-lock data-point; if yours doesn't, set `noChildLock: true` so the plugin doesn't add a (non-functional) lock control. Likewise, set `noRotationSpeed: true` if the device has no fan-speed control.
 
 Additional parameters can be found in the sample below.
