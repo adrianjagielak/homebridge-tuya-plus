@@ -52,6 +52,21 @@ describe('GarageDoorAccessory._getTargetDoorState — Kogan (string)', () => {
     test('"closing" → targetClosed', () => expect(instance._getTargetDoorState('closing')).toBe(TDS.CLOSED));
 });
 
+describe('GarageDoorAccessory._getTargetDoorState — Daspi (string)', () => {
+    let instance;
+    beforeEach(() => ({ instance } = makeGarage('Daspi')));
+
+    test('"open" → targetOpen', () => expect(instance._getTargetDoorState('open')).toBe(TDS.OPEN));
+    test('"opening" → targetOpen', () => expect(instance._getTargetDoorState('opening')).toBe(TDS.OPEN));
+    test('"open_softstop" → targetOpen', () => expect(instance._getTargetDoorState('open_softstop')).toBe(TDS.OPEN));
+    test('"full_opened" → targetOpen', () => expect(instance._getTargetDoorState('full_opened')).toBe(TDS.OPEN));
+    test('"close" → targetClosed', () => expect(instance._getTargetDoorState('close')).toBe(TDS.CLOSED));
+    test('"closing" → targetClosed', () => expect(instance._getTargetDoorState('closing')).toBe(TDS.CLOSED));
+    test('"close_softstop" → targetClosed', () => expect(instance._getTargetDoorState('close_softstop')).toBe(TDS.CLOSED));
+    test('"full_closed" → targetClosed', () => expect(instance._getTargetDoorState('full_closed')).toBe(TDS.CLOSED));
+    test('mixed case "FULL_OPENED" → targetOpen', () => expect(instance._getTargetDoorState('FULL_OPENED')).toBe(TDS.OPEN));
+});
+
 // ---------------------------------------------------------------------------
 // _getCurrentDoorState
 // ---------------------------------------------------------------------------
@@ -76,6 +91,19 @@ describe('GarageDoorAccessory._getCurrentDoorState — Kogan (string)', () => {
     test('"opening" → OPENING',  () => expect(instance._getCurrentDoorState('opening')).toBe(CDS.OPENING));
     test('"closing" → CLOSING',  () => expect(instance._getCurrentDoorState('closing')).toBe(CDS.CLOSING));
     test('"closed" → CLOSED',    () => expect(instance._getCurrentDoorState('closed')).toBe(CDS.CLOSED));
+});
+
+describe('GarageDoorAccessory._getCurrentDoorState — Daspi (string)', () => {
+    let instance;
+    beforeEach(() => ({ instance } = makeGarage('Daspi')));
+
+    test('"full_opened" → OPEN',         () => expect(instance._getCurrentDoorState('full_opened')).toBe(CDS.OPEN));
+    test('"open_softstop" → OPENING',    () => expect(instance._getCurrentDoorState('open_softstop')).toBe(CDS.OPENING));
+    test('"opening" → OPENING',          () => expect(instance._getCurrentDoorState('opening')).toBe(CDS.OPENING));
+    test('"close_softstop" → CLOSING',   () => expect(instance._getCurrentDoorState('close_softstop')).toBe(CDS.CLOSING));
+    test('"closing" → CLOSING',          () => expect(instance._getCurrentDoorState('closing')).toBe(CDS.CLOSING));
+    test('"full_closed" → CLOSED',       () => expect(instance._getCurrentDoorState('full_closed')).toBe(CDS.CLOSED));
+    test('mixed case "FULL_CLOSED" → CLOSED', () => expect(instance._getCurrentDoorState('FULL_CLOSED')).toBe(CDS.CLOSED));
 });
 
 // ---------------------------------------------------------------------------
@@ -110,6 +138,23 @@ describe('GarageDoorAccessory.setTargetDoorState — Kogan', () => {
         device.state['101'] = 'opened';
         instance.setTargetDoorState(TDS.CLOSED);
         expect(device.update).toHaveBeenCalledWith({ '101': 'close' });
+    });
+});
+
+describe('GarageDoorAccessory.setTargetDoorState — Daspi', () => {
+    // Daspi expects capitalized command strings, unlike Kogan's lowercase.
+    test('OPEN sends "Open" to dpAction (1)', () => {
+        const { instance, device } = makeGarage('Daspi');
+        device.state['1'] = 'full_closed';
+        instance.setTargetDoorState(TDS.OPEN);
+        expect(device.update).toHaveBeenCalledWith({ '1': 'Open' });
+    });
+
+    test('CLOSED sends "Close" to dpAction (1)', () => {
+        const { instance, device } = makeGarage('Daspi');
+        device.state['1'] = 'full_opened';
+        instance.setTargetDoorState(TDS.CLOSED);
+        expect(device.update).toHaveBeenCalledWith({ '1': 'Close' });
     });
 });
 
