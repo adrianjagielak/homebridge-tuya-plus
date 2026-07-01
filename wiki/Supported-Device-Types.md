@@ -5,7 +5,7 @@ If you are looking for verified configurations for your specific device, please 
 
 |Device  |Type|Notes  |
 |:---|:---:|:---|
-|Smart Plug|`Outlet`<sup>[1](#outlets)</sup>|Smart plugs that just turn on and off <small>([instructions](#outlets))</small>| 
+|Smart Plug|`Outlet`<sup>[1](#outlets)</sup>|Smart plugs that just turn on and off <small>([instructions](#outlets))</small>|
 |Smart Light Bulb Socket|`SimpleLight`|Light sockets that just turn on and off|
 |Simple Light Bulb|`SimpleLight`|Light bulbs that just turn on and off|
 |Tunable White Light Bulb|`TWLight`<sup>[2](#tunable-white-light-bulbs)</sup>|Bulbs with tunable white and dimming functionality <small>([instructions](#tunable-white-light-bulbs))</small>|
@@ -21,13 +21,17 @@ If you are looking for verified configurations for your specific device, please 
 |Garage Door|`GarageDoor`<sup>[10](#garage-doors)</sup>|Smart garage doors or garage door openers <small>([instructions](#garage-doors))</small>|
 |Simple Garage Door|`SimpleGarageDoor`<sup>[10](#simple-garage-doors)</sup>|Sliding gate openers and garage door controllers with open/stop/close action DPs and a simple three-value status DP <small>([instructions](#simple-garage-doors))</small>|
 |Simple Blinds|`SimpleBlinds`<sup>[11](#simple-blinds)</sup>|Smart blinds and smart switches that control blinds <small>([instructions](#simple-blinds))</small>|
-|Simple Blinds2|`SimpleBlinds2`<sup>[11](#simple-blinds)</sup>|Smart blinds and smart switches that control blinds(Use if simple Blinds (1) doesn't work for you. <small>([instructions](#simple-blinds))</small>|
 |Vertical Blinds with Tilt|`VerticalBlindsWithTilt`<sup>[11](#vertical-blinds-with-tilt)</sup>|Smart vertical blinds with open/close and panel rotation <small>([instructions](#vertical-blinds-with-tilt))</small>|
 |Percent Control Blinds|`PercentBlinds`<sup>[11](#percent-control-blinds)</sup>|Blinds that natively report and accept a percentage position via a `percent_control` datapoint <small>([instructions](#percent-control-blinds))</small>|
 |Smart Plug w/ White and Color Lights|`RGBTWOutlet`<sup>[12](#outlets-with-white-and-color-lights)</sup>|Smart plugs that have controllable RGBTW LEDs <small>([instructions](#outlets-with-white-and-color-lights))</small>|
-|Smart Fan Regulator|`SimpleFanAccessory`<sup>[more](#smart-fan-regulators-and-accessories)</sup>|Smart Fan Regulators that have controllable Speeds <small>([instructions](#smart-fan-regulators-and-accessories))</small>|
-|Smart Fan with Light|`SimpleFanLightAccessory`<sup>[more](#smart-fan-with-light)</sup>|Smart Fan devices that have controllable Speeds, Directions and a built-in Light<small>([instructions](#smart-fan-with-light))</small>|
-|Smart Switch|`Switch`<sup>[13](#switch)</sup>|Smart switches that just turn on and off <small>([instructions](#switch))</small>| 
+|Smart Fan Regulator|`Fan`<sup>[more](#smart-fan-regulators-and-accessories)</sup>|Smart Fan Regulators that have controllable Speeds <small>([instructions](#smart-fan-regulators-and-accessories))</small>|
+|Smart Fan with Light|`FanLight`<sup>[more](#smart-fan-with-light)</sup>|Smart Fan devices that have controllable Speeds, Directions and a built-in Light<small>([instructions](#smart-fan-with-light))</small>|
+|Air Purifier|`AirPurifier`<sup>[more](#air-purifiers)</sup>|Air purifiers with fan-speed, auto mode and optional air-quality sensor <small>([instructions](#air-purifiers))</small>|
+|Dehumidifier|`Dehumidifier`<sup>[more](#dehumidifiers)</sup>|Dehumidifiers with target humidity and fan-speed control <small>([instructions](#dehumidifiers))</small>|
+|Oil Diffuser / Humidifier|`OilDiffuser`<sup>[more](#oil-diffusers--humidifiers)</sup>|Aroma diffusers / humidifiers with mist control and an optional colour light <small>([instructions](#oil-diffusers--humidifiers))</small>|
+|Water Valve / Sprinkler|`watervalve`<sup>[more](#water-valves--single-sprinklers)</sup>|A single irrigation/shower/faucet valve with an optional run timer <small>([instructions](#water-valves--single-sprinklers))</small>|
+|Simple Dimmer (fixed brightness DP)|`SimpleDimmer2`<sup>[more](#simple-dimmers--wled-dimmers)</sup>|Variant of `SimpleDimmer` whose brightness is fixed to DP `3` <small>([instructions](#simple-dimmers--wled-dimmers))</small>|
+|Smart Switch|`Switch`<sup>[13](#switch)</sup>|Smart switches that just turn on and off <small>([instructions](#switch))</small>|
 
 
 
@@ -46,7 +50,7 @@ These are swich gangs
     "id": "032000123456789abcde",
     "key": "0123456789abcdef",
 
-    /* Define number of switches it support */
+    /* Define number of switches it support. Default: 1 */
     "switchCount": 3,
 }
 ```
@@ -74,7 +78,7 @@ These are plugs with a single outlet that can only be turned on or off.
     /* Datapoint identifier for wattage reporting */
     "wattsId": 7,
 
-    /* Often voltage is reported divided by 10; if that is 
+    /* Often voltage is reported divided by 10; if that is
        not the case for you, override the default */
     "voltsDivisor": 10,
 
@@ -88,10 +92,12 @@ These are plugs with a single outlet that can only be turned on or off.
 
     /* Additional parameters to override defaults only if needed */
 
-    /* Override the default datapoint identifier for power */
+    /* Override the default datapoint identifier for power. Default: "1" */
     "dpPower": 1
 }
 ```
+
+> The energy-reporting options (`voltsId` / `ampsId` / `wattsId`) are unset by default — add them only if your plug reports those values. The divisors shown above (`10` / `1000` / `10`) are the defaults.
 
 ### Tunable White Light Bulbs
 These are light bulbs that let you control the brightness and tune the bulb's light from warm white to daylight white.
@@ -107,20 +113,20 @@ These are light bulbs that let you control the brightness and tune the bulb's li
 
     /* Additional parameters to override defaults only if needed */
 
-    /* Override the default datapoint identifier for power */
+    /* Override the default datapoint identifier for power. Default: "1" */
     "dpPower": 1,
 
-    /* Override the default datapoint identifier for brightness */
+    /* Override the default datapoint identifier for brightness. Default: "2" */
     "dpBrightness": 2,
 
-    /* Override the default datapoint identifier for color-temperature */
+    /* Override the default datapoint identifier for color-temperature. Default: "3" */
     "dpColorTemperature": 3,
 
     /* Minimum white temperature mired value
-       (See https://en.wikipedia.org/wiki/Mired) */
+       (See https://en.wikipedia.org/wiki/Mired). Default: 0 */
     "minWhiteColor": 140,
 
-    /* Maximum white temperature mired value */
+    /* Maximum white temperature mired value. Default: 600 */
     "maxWhiteColor": 400
 }
 ```
@@ -130,7 +136,7 @@ These are bulbs that can produce white light as well as colors and allow you to 
 
 There are two kinds of color devices: (1) the most common ones use 14 characters to represent the color (`HEXHSB`), and (2) others use 12 characters for the color (`HSB`). The `colorFunction` defaults to `HEXHSB` but can be overriden in the config block to properly use the second type.
 
-It is common for `HEXHSB` devices to use white color temperature and brightness values from 0 to 255 (scale of `255`). It is also common for `HSB` devices to use white color temperature and brightness values from 0 to 1000 (scale of `1000`). If a device doesn't follow these common values, `scaleWhiteColor` and `scaleBrightness` can help.   
+It is common for `HEXHSB` devices to use white color temperature and brightness values from 0 to 255 (scale of `255`). It is also common for `HSB` devices to use white color temperature and brightness values from 0 to 1000 (scale of `1000`). If a device doesn't follow these common values, `scaleWhiteColor` and `scaleBrightness` can help.
 
 ```json5
 {
@@ -143,26 +149,32 @@ It is common for `HEXHSB` devices to use white color temperature and brightness 
 
     /* Additional parameters to override defaults only if needed */
 
-    /* Override the default datapoint identifier for power */
+    /* Override the default datapoint identifier for power. Default: "1" */
     "dpPower": 1,
 
-    /* Override the default datapoint identifier for mode (white vs color) */
+    /* Override the default datapoint identifier for mode (white vs color). Default: "2" */
     "dpMode": 2,
 
-    /* Override the default datapoint identifier for brightness */
+    /* Override the default datapoint identifier for brightness. Default: "3" */
     "dpBrightness": 3,
 
-    /* Override the default datapoint identifier for color-temperature of the whites */
+    /* Override the default datapoint identifier for color-temperature of the whites. Default: "4" */
     "dpColorTemperature": 4,
 
-    /* Override the default datapoint identifier for color */
+    /* Override the default datapoint identifier for color. Default: "5" */
     "dpColor": 5,
 
+    /* Override the mode phrases the device uses for white vs colour
+       (both "cmdColour" and "cmdColor" spellings are accepted).
+       Defaults: "white" / "colour" */
+    "cmdWhite": "white",
+    "cmdColor": "colour",
+
     /* Minimum white temperature mired value
-       (See https://en.wikipedia.org/wiki/Mired) */
+       (See https://en.wikipedia.org/wiki/Mired). Default: 140 */
     "minWhiteColor": 140,
 
-    /* Maximum white temperature mired value */
+    /* Maximum white temperature mired value. Default: 400 */
     "maxWhiteColor": 400,
 
     /* Override the color format (default: HEXHSB)
@@ -170,10 +182,10 @@ It is common for `HEXHSB` devices to use white color temperature and brightness 
        Using HSB defaults the scale of brightness and white color to 1000 */
     "colorFunction": "HEXHSB",
 
-    /* Override the default brightness scale */
+    /* Override the default brightness scale. Default: 255 (1000 in HSB mode) */
     "scaleBrightness": 255,
-                          
-    /* Override the default color temperature scale */
+
+    /* Override the default color temperature scale. Default: 255 (1000 in HSB mode) */
     "scaleWhiteColor": 255
 }
 ```
@@ -189,7 +201,7 @@ These device can have any number of controllable outlets. To let the plugin know
     "model": "Smart Wifi Power Strip",
     "id": "032000123456789abcde",
     "key": "0123456789abcdef",
-    /* This device has 3 outlets and 2 USB ports, all individually controllable */
+    /* This device has 3 outlets and 2 USB ports, all individually controllable. Default: 1 */
     "outletCount": 5
 }
 ```
@@ -295,24 +307,43 @@ Additional parameters can be found in the sample below.
     /* This device has no oscillation (swinging) function */
     "noSwing": true,
 
-    /* Minimum temperature supported, in Celsius (°C) */
+    /* Minimum temperature supported, in Celsius (°C). Default: 10 */
     "minTemperature": 15,
 
-    /* Maximum temperature supported, in Celsius (°C) */
+    /* Maximum temperature supported, in Celsius (°C). Default: 35 */
     "maxTemperature": 40,
 
-    /* Temperature change steps, in Celsius (°C) */
+    /* Temperature change steps, in Celsius (°C). Default: 1 */
     "minTemperatureSteps": 1,
 
-    /* Only if your firmware reports/accepts temperatures scaled by 10 (e.g. 170 = 17.0 °C) */
-    "temperatureDivisor": 10
+    /* Only if your firmware reports/accepts temperatures scaled by 10 (e.g. 170 = 17.0 °C). Default: 1 */
+    "temperatureDivisor": 10,
+
+    /* Override the temperatureDivisor for just the current temperature, if it
+       differs from the setpoint scale. Default: same as temperatureDivisor */
+    "currentTemperatureDivisor": 10,
+
+    /* Override the temperatureDivisor for just the setpoint, if it differs from
+       the current-temperature scale. Default: same as temperatureDivisor */
+    "thresholdTemperatureDivisor": 10,
+
+    /* --- Data-point overrides (only if your device differs from the defaults) --- */
+
+    "dpActive": 1,              /* on/off.                       Default: "1"   */
+    "dpThreshold": 2,           /* target temperature setpoint.  Default: "2"   */
+    "dpCurrentTemperature": 3,  /* current temperature.          Default: "3"   */
+    "dpMode": 4,                /* mode (cool/heat/auto).        Default: "4"   */
+    "dpRotationSpeed": 5,       /* fan speed.                    Default: "5"   */
+    "dpChildLock": 6,           /* child lock.                   Default: "6"   */
+    "dpTempUnits": 19,          /* temperature display units.    Default: "19"  */
+    "dpSwingMode": 104          /* swing / oscillation.          Default: "104" */
 }
 ```
 
 ### Heat Convectors
 The heating panels have a _low_ or _high_ setting but since HomeKit's definition doesn't accommodate that, I have mapped it to `Fan Speed`; be aware that when the fan speed slider is at the lowest value, it turns the device off. By default, the plugin uses _LOW_ and _HIGH_ to request these settings and these commands can be configured using `cmdLow` and `cmdHigh`; if your device uses _Low_ and _High_, add these two additional parameters to your config. Additional parameters can be found in the sample below.
 
-If your signature doesn't have a variation of _low_ or _high_, `SimpleHeater` would be the correct device `type` to use and not this one. 
+If your signature doesn't have a variation of _low_ or _high_, `SimpleHeater` would be the correct device `type` to use and not this one.
 
 ```json5
 {
@@ -325,48 +356,56 @@ If your signature doesn't have a variation of _low_ or _high_, `SimpleHeater` wo
 
     /* Additional parameters to override defaults only if needed */
 
-    /* Override the default datapoint identifier of activity */
+    /* Override the default datapoint identifier of activity. Default: "7" */
     "dpActive": 7,
 
-    /* Override the default datapoint identifier for the desired temperature*/
+    /* Override the default datapoint identifier for the desired temperature. Default: "2" */
     "dpDesiredTemperature": 2,
 
-    /* Override the default datapoint identifier for the current temperature */
+    /* Override the default datapoint identifier for the current temperature. Default: "3" */
     "dpCurrentTemperature": 3,
 
-    /* Override the default datapoint identifier for rotation speed */
+    /* Override the default datapoint identifier for rotation speed. Default: "4" */
     "dpRotationSpeed": 4,
 
-    /* Override the default datapoint identifier for child-lock */
+    /* Override the default datapoint identifier for child-lock. Default: "6" */
     "dpChildLock": 6,
 
-    /* Override the default datapoint identifier for temperature-display units */
+    /* Override the default datapoint identifier for temperature-display units. Default: "19" */
     "dpTemperatureDisplayUnits": 19,
 
-    /* Override phrase for low setting */
+    /* Override phrase for low setting. Default: "LOW" */
     "cmdLow": "Low",
 
-    /* Override phrase for high setting */
+    /* Override phrase for high setting. Default: "HIGH" */
     "cmdHigh": "High",
 
-    /* This device does not provide locking the physical controls */
+    /* Flip the speed slider so LOW sits at 1% and HIGH at 100%
+       (instead of the reverse). Default: false */
+    "enableFlipSpeedSlider": true,
+
+    /* This device does not provide locking the physical controls. Default: false */
     "noChildLock": true,
 
-    /* This device has no function to change the temperature units */
+    /* This device has no function to change the temperature units. Default: false */
     "noTemperatureUnit": true,
 
-    /* Minimum temperature supported, in Celsius (°C) */
+    /* Minimum temperature supported, in Celsius (°C). Default: 15 */
     "minTemperature": 15,
 
-    /* Maximum temperature supported, in Celsius (°C) */
-    "maxTemperature": 35
+    /* Maximum temperature supported, in Celsius (°C). Default: 35 */
+    "maxTemperature": 35,
+
+    /* Temperature step for the HomeKit slider, in °C. Default: 1 */
+    "minTemperatureSteps": 1
 }
 ```
 
 ### Simple Dimmers / WLED Dimmers
-These are switches that allow turning on and off, and dimming. Two distinct types are available:
+These are switches that allow turning on and off, and dimming. Three distinct types are available:
 
 - `SimpleDimmer` — a plain dimmer with power and brightness control.
+- `SimpleDimmer2` — identical to `SimpleDimmer`, but its brightness data-point is **fixed to DP `3`** (a `dpBrightness` value is ignored). Use it only if your dimmer reports brightness on DP `3` and `SimpleDimmer` doesn't work. `dpPower` (default `"1"`) is still configurable.
 - `WledDimmer` — a dimmer that can additionally drive a [WLED](https://kno.wled.ge/) controller (e.g. a Tuya-based relay/dimmer feeding power to a WLED strip). With none of the WLED options below configured, it behaves exactly like a `SimpleDimmer`.
 
 The following options apply to `WledDimmer` only (they are ignored by `SimpleDimmer`):
@@ -419,29 +458,46 @@ While defined mainly to develop a more robust device type, this can be used to c
 
     /* Additional parameters to override defaults only if needed */
 
-    /* Override the default datapoint identifier for being active */
+    /* Override the default datapoint identifier for being active. Default: "1" */
     "dpActive": 1,
 
-    /* Override the default datapoint identifier for the desired temperature */
+    /* Override the default datapoint identifier for the desired temperature. Default: "2" */
     "dpDesiredTemperature": 2,
 
-    /* Override the default datapoint identifier for the current temperature */
+    /* Override the default datapoint identifier for the current temperature. Default: "3" */
     "dpCurrentTemperature": 3,
 
     /* If your device reports temperatures in multiples of the real value, introduce it here.
-       e.g., if your device reports 155 for 15.5°C, use the value 10 */
+       e.g., if your device reports 155 for 15.5°C, use the value 10. Default: 1 */
     "temperatureDivisor": 1,
 
-    /* Minimum temperature supported, in Celsius (°C) */
+    /* Divisor applied only to the desired (target) temperature, if it differs
+       from the current-temperature scale. Default: same as temperatureDivisor */
+    "thresholdTemperatureDivisor": 1,
+
+    /* Offset added to every temperature (reading and setpoint), in °C.
+       Use to correct a device that consistently reads high or low. Default: 0 */
+    "temperatureOffset": 0,
+
+    /* Offset added only to the displayed current temperature, in °C
+       (handy for a wall-mounted sensor). Default: same as temperatureOffset */
+    "currentTemperatureOffset": 0,
+
+    /* Minimum temperature supported, in Celsius (°C). Default: 15 */
     "minTemperature": 15,
 
-    /* Maximum temperature supported, in Celsius (°C) */
-    "maxTemperature": 35
+    /* Maximum temperature supported, in Celsius (°C). Default: 35 */
+    "maxTemperature": 35,
+
+    /* Temperature step for the HomeKit slider, in °C. Default: 1 */
+    "minTemperatureSteps": 1
 }
 ```
 
 ### Garage Doors
 While still in early testing, you can use this to open and close the garage doors. If your garage door or garage door opener does more that just open and close, for example reports its position or detects obstacles, please create an issue and paste your signature with any information you can provide; this is so we can build a better solution for you together.
+
+The default data-points depend on the `manufacturer` you set: `dpAction`/`dpStatus` default to `"101"`/`"102"` for Kogan, `"1"`/`"101"` for Wofea, and `"1"`/`"2"` for everything else. Override them below if your device differs.
 
 ```json5
 {
@@ -460,7 +516,7 @@ While still in early testing, you can use this to open and close the garage door
     /* Override the default datapoint identifier for the state of the door */
     "dpStatus": 2,
 
-    /* If the app reports open when the door is closed, 
+    /* If the app reports open when the door is closed,
        and reports closed when it is open */
     "flipState": true
 }
@@ -547,14 +603,29 @@ Normally the blinds don't report their position. This plugin attempts to time th
 
     /* Additional parameters to override defaults only if needed */
 
-    /* How many seconds does it take to fully open from a fully closed state  */
+    /* Data-point that carries the open/close/stop command. Default: "1" */
+    "dpAction": 1,
+
+    /* Which set of command words this blind understands. Default: 1
+         1 → "open" / "close" / "stop"
+         2 → "on" / "off" / "stop"
+         3 → "1" / "2" / "3"
+       Set cmdOpen/cmdClose/cmdStop below to override individual words. */
+    "dpBlindType": 1,
+
+    /* Override the individual command words (defaults follow dpBlindType above) */
+    "cmdOpen": "open",
+    "cmdClose": "close",
+    "cmdStop": "stop",
+
+    /* How many seconds does it take to fully open from a fully closed state. Default: 45 */
     "timeToOpen": 45,
 
-    /* How many seconds it spends tightening the blinds while closing */
+    /* How many seconds it spends tightening the blinds while closing. Default: 0 */
     "timeToTighten": 0,
 
-    /* If the app reports open when the blinds are closed, 
-       and reports closed when they are open */
+    /* If the app reports open when the blinds are closed,
+       and reports closed when they are open. Default: false */
     "flipState": true
 }
 ```
@@ -573,6 +644,7 @@ Support for Tuya/Graywind Smart Vertical Blinds with open/close (retract/extend)
 ```
 
 #### Full Configuration
+All of these are optional — the defaults are `dpAction: "1"`, `dpTilt: "2"`, `dpTiltState: "3"` and `timeToClose: 30` (seconds).
 ```json
 {
   "name": "Living Room Blinds",
@@ -630,7 +702,7 @@ These are plugs with a single outlet that that have controllable white and color
 
 There are two kinds of color devices: (1) the most common ones use 14 characters to represent the color (`HEXHSB`), and (2) others use 12 characters for the color (`HSB`). The `colorFunction` defaults to `HEXHSB` but can be overriden in the config block to properly use the second type.
 
-It is common for `HEXHSB` devices to use white color temperature and brightness values from 0 to 255 (scale of `255`). It is also common for `HSB` devices to use white color temperature and brightness values from 0 to 1000 (scale of `1000`). If a device doesn't follow these common values, `scaleWhiteColor` and `scaleBrightness` can help.   
+It is common for `HEXHSB` devices to use white color temperature and brightness values from 0 to 255 (scale of `255`). It is also common for `HSB` devices to use white color temperature and brightness values from 0 to 1000 (scale of `1000`). If a device doesn't follow these common values, `scaleWhiteColor` and `scaleBrightness` can help.
 
 ```json5
 {
@@ -652,7 +724,7 @@ It is common for `HEXHSB` devices to use white color temperature and brightness 
     /* Datapoint identifier for wattage reporting */
     "wattsId": 7,
 
-    /* Often voltage is reported divided by 10; if that is 
+    /* Often voltage is reported divided by 10; if that is
        not the case for you, override the default */
     "voltsDivisor": 10,
 
@@ -666,29 +738,35 @@ It is common for `HEXHSB` devices to use white color temperature and brightness 
 
     /* Additional parameters to override defaults only if needed */
 
-    /* Override the default datapoint identifier for outlet power */
+    /* Override the default datapoint identifier for outlet power. Default: "101" */
     "dpPower": 101,
 
-    /* Override the default datapoint identifier for light power */
+    /* Override the default datapoint identifier for light power. Default: "1" */
     "dpLight": 1,
 
-    /* Override the default datapoint identifier for mode (white vs color) */
+    /* Override the default datapoint identifier for mode (white vs color). Default: "2" */
     "dpMode": 2,
 
-    /* Override the default datapoint identifier for brightness */
+    /* Override the default datapoint identifier for brightness. Default: "3" */
     "dpBrightness": 3,
 
-    /* Override the default datapoint identifier for color-temperature of the whites */
+    /* Override the default datapoint identifier for color-temperature of the whites. Default: "4" */
     "dpColorTemperature": 4,
 
-    /* Override the default datapoint identifier for color */
+    /* Override the default datapoint identifier for color. Default: "5" */
     "dpColor": 5,
 
+    /* Override the mode phrases the device uses for white vs colour
+       (both "cmdColour" and "cmdColor" spellings are accepted).
+       Defaults: "white" / "colour" */
+    "cmdWhite": "white",
+    "cmdColor": "colour",
+
     /* Minimum white temperature mired value
-       (See https://en.wikipedia.org/wiki/Mired) */
+       (See https://en.wikipedia.org/wiki/Mired). Default: 140 */
     "minWhiteColor": 140,
 
-    /* Maximum white temperature mired value */
+    /* Maximum white temperature mired value. Default: 400 */
     "maxWhiteColor": 400,
 
     /* Override the color format (default: HEXHSB)
@@ -696,16 +774,18 @@ It is common for `HEXHSB` devices to use white color temperature and brightness 
        Using HSB defaults the scale of brightness and white color to 1000 */
     "colorFunction": "HEXHSB",
 
-    /* Override the default brightness scale */
+    /* Override the default brightness scale. Default: 255 (1000 in HSB mode) */
     "scaleBrightness": 255,
-                          
-    /* Override the default color temperature scale */
+
+    /* Override the default color temperature scale. Default: 255 (1000 in HSB mode) */
     "scaleWhiteColor": 255
 }
 ```
 
 ### Smart Fan Regulators and Accessories
 These are accessories that may act as a regulator switch or an inbuilt regulator to your ceiling fan. Supported features include on/off switching, speed controls (generally managed through two buttons, one speed at a time in each direction, up and down), and direction control (forward/reverse). There are two kinds of regulator devices: (1) the most common ones use 3 speed controls, and (2) others use 5 speed controls which are found compatible with most fan regulators in India, Australia, and the UK.
+
+Every option below is optional — the defaults match a common 3-speed fan. The data-point keys are **`dpFanOn` / `dpRotationSpeed` / `dpFanDirection`** (not `dpActive` / `dpRotationDirection`).
 
 ```json5
 {
@@ -716,19 +796,39 @@ These are accessories that may act as a regulator switch or an inbuilt regulator
     "id": "032000123456789abcde",
     "key": "0123456789abcdef",
 
-    /* Override the default datapoint identifier of activity */
-    "dpActive": "1",
+    /* Additional parameters to override defaults only if needed */
 
-    /* Override the default datapoint identifier of rotation speed */
-    "dpRotationSpeed": "2",
+    /* Data-point for fan on/off. Default: "1" */
+    "dpFanOn": "1",
 
-    /* Override the default datapoint identifier of direction control (forward/reverse) */
-    "dpRotationDirection": 63
+    /* Data-point for fan speed. Default: "3" */
+    "dpRotationSpeed": "3",
+
+    /* Data-point for direction control (forward/reverse). Default: "2" */
+    "dpFanDirection": "2",
+
+    /* Number of speed steps the fan supports (e.g. 5 for India/AU/UK regulators).
+       Default: 3 */
+    "maxSpeed": 3,
+
+    /* Speed to use when the fan is switched on from off. Default: 1 */
+    "fanDefaultSpeed": 1,
+
+    /* Send the speed value as a string (e.g. "3") rather than a number.
+       Most fans require this; turn off only if yours ignores string speeds.
+       Default: true */
+    "useStrings": true,
+
+    /* Send fan on/off and speed together in one legacy control packet.
+       Set false if your firmware ignores multi-DP packets. Default: true */
+    "useMultiState": true
 }
 ```
 
 ### Smart Fan with Light
-These are accessories that combine fan and lighting control in one device. Supported features include on/off switching, speed controls (generally managed through two buttons, one speed at a time in each direction, up and down), direction control (forward/reverse), as well as light power, brightness, and color temperature controls. There are multiple kinds of devices with different speed and light control capabilities.
+These are accessories that combine fan and lighting control in one device. Supported features include on/off switching, speed control, direction control (forward/reverse), as well as light power, brightness, and color temperature controls. There are multiple kinds of devices with different speed and light control capabilities.
+
+> **⚠️ Key names matter.** This accessory uses **`dpFanOn`**, **`dpFanDirection`**, **`dpLightOn`** and **`dpColorTemp`** — *not* `dpActive`, `dpRotationDirection`, `dpLight` or `dpColorTemperature`. It also does **not** read `minBrightness` or `scaleBrightness`: brightness is always on Tuya's standard 10–1000 scale, and color temperature on Tuya's 0–1000 scale (mapped to the mired range below). Every option is optional; defaults are shown.
 
 ```json5
 {
@@ -739,17 +839,55 @@ These are accessories that combine fan and lighting control in one device. Suppo
     "manufacturer": "Hunter Pacific International",
     "model": "Polar v2 Fan",
 
-    "dpLight": 20,
-    "useBrightness": true,
-    "dpBrightness": 22,
-    "minBrightness": 1,
-    "scaleBrightness": 9,
-    "dpColorTemperature": 23,
+    /* --- Fan --- */
 
-    "dpActive": 60,
+    /* Data-point for fan on/off. Default: "60" */
+    "dpFanOn": 60,
+
+    /* Data-point for fan speed. Default: "62" */
     "dpRotationSpeed": 62,
-    "maxSpeed": 9,
-    "dpRotationDirection": 63
+
+    /* Data-point for direction control (forward/reverse). Default: "63" */
+    "dpFanDirection": 63,
+
+    /* Number of speed steps the fan supports. Default: 6 */
+    "maxSpeed": 6,
+
+    /* Speed used when the fan is switched on from off. Default: 1 */
+    "fanDefaultSpeed": 1,
+
+    /* Send the speed value as a string rather than a number. Default: true */
+    "useStrings": true,
+
+    /* Send each data point in its own packet instead of combining fan
+       power + speed into one. Default: false (see note below) */
+    "singleDpWrites": false,
+
+    /* --- Light --- */
+
+    /* Expose the light at all. Set false for a fan with no light. Default: true */
+    "useLight": true,
+
+    /* Data-point for light on/off. Default: "20" */
+    "dpLightOn": 20,
+
+    /* Expose a brightness slider. Default: true */
+    "useBrightness": true,
+
+    /* Data-point for brightness (Tuya 10–1000 scale). Default: "22" */
+    "dpBrightness": 22,
+
+    /* Expose a colour-temperature control. Default: true */
+    "useColorTemp": true,
+
+    /* Data-point for colour temperature (Tuya 0–1000 scale). Default: "23" */
+    "dpColorTemp": 23,
+
+    /* Coolest colour temperature, in mireds (~6500 K). Default: 154 */
+    "minWhiteColor": 154,
+
+    /* Warmest colour temperature, in mireds (~2700 K). Default: 370 */
+    "maxWhiteColor": 370
 }
 ```
 
@@ -762,7 +900,7 @@ If the light, brightness and turning the fan **off** all work, but turning the f
     "id": "032000123456789abcde",
     "key": "0123456789abcdef",
 
-    "dpActive": 60,
+    "dpFanOn": 60,
     "dpRotationSpeed": 62,
 
     /* Send each data point in its own packet instead of combining them. */
@@ -878,5 +1016,152 @@ It's deliberately carried on the system tile rather than as a separate sensor ac
     "lowBatteryThreshold": 20,
     "dpCharging": 101,   /* boolean charging-status DP (solar / USB-C); omit if not reported */
     /* "noBattery": true, */
+}
+```
+
+### Air Purifiers
+Air purifiers exposed as a HomeKit Air Purifier with on/off, an auto mode, fan-speed control and (optionally) an air-quality sensor. The data-points are fixed; only the options below are configurable.
+
+```json5
+{
+    "name": "My Air Purifier",
+    "type": "AirPurifier",
+    "manufacturer": "Proscenic",
+    "model": "A8",
+    "id": "032000123456789abcde",
+    "key": "0123456789abcdef",
+
+    /* Additional parameters to override defaults only if needed */
+
+    /* Map the fan speed onto a fixed number of discrete steps instead of a
+       continuous slider. Some firmwares need this for speed changes to
+       register. Default: off (continuous) */
+    "noRotationSpeed": true,
+
+    /* Number of discrete speed steps to use when noRotationSpeed is set (1–99).
+       Has no effect unless noRotationSpeed is enabled. Default: 100 */
+    "fanSpeedSteps": 3,
+
+    /* Override the device's "auto" mode phrase (case-sensitive). Default: "AUTO" */
+    "cmdAuto": "AUTO",
+
+    /* Add an Air Quality sensor service (PM2.5 / air-quality level). Default: false */
+    "showAirQuality": true,
+
+    /* Name for the air-quality sensor service. Default: "Air Quality" */
+    "nameAirQuality": "Air Quality",
+
+    /* This device has no child-lock data-point. Default: false */
+    "noChildLock": true
+}
+```
+
+### Dehumidifiers
+Dehumidifiers exposed as a HomeKit Humidifier/Dehumidifier with a target-humidity slider and optional fan-speed and child-lock controls. The data-points are fixed; only the options below are configurable.
+
+```json5
+{
+    "name": "My Dehumidifier",
+    "type": "Dehumidifier",
+    "manufacturer": "Generic",
+    "model": "Smart Dehumidifier",
+    "id": "032000123456789abcde",
+    "key": "0123456789abcdef",
+
+    /* Additional parameters to override defaults only if needed */
+
+    /* Target-humidity bounds advertised to HomeKit, in %. Defaults: 40 / 80 */
+    "minHumidity": 40,
+    "maxHumidity": 80,
+
+    /* Target-humidity step, in %. Default: 5 */
+    "humiditySteps": 5,
+
+    /* This device has no fan-speed control. Default: false */
+    "noSpeed": true,
+
+    /* Fan-speed slider bounds and step. Defaults: 1 / 2 / 1 */
+    "minSpeed": 1,
+    "maxSpeed": 2,
+    "speedSteps": 1,
+
+    /* This device has no child-lock data-point — hides the lock control entirely. Default: false */
+    "noChildLock": true,
+
+    /* Keep the child-lock control visible but make toggling it a no-op
+       (useful if the device exposes the lock DP but doesn't honour writes). Default: false */
+    "noLock": true
+}
+```
+
+### Oil Diffusers / Humidifiers
+Aroma diffusers and humidifiers with mist on/off, mist intensity (speed) and an optional colour light. Mode/colour command phrases vary by manufacturer and are auto-detected for several known brands (BelleLife, Geeni, Asakuki); override them only if your device differs.
+
+```json5
+{
+    "name": "My Diffuser",
+    "type": "OilDiffuser",
+    "manufacturer": "Generic",
+    "model": "Aroma Diffuser",
+    "id": "032000123456789abcde",
+    "key": "0123456789abcdef",
+
+    /* Additional parameters to override defaults only if needed */
+
+    /* Data-point for the mist (humidifier) on/off. Default: "1" */
+    "dpActive": 1,
+
+    /* Data-point for mist intensity / speed. Default: "2" */
+    "dpRotationSpeed": 2,
+
+    /* Number of mist-intensity steps. Default: 2 */
+    "maxSpeed": 2,
+
+    /* Data-point for the light on/off. Default: "5" */
+    "dpLight": 5,
+
+    /* Data-point for light mode (white vs colour). Default: "6" */
+    "dpMode": 6,
+
+    /* Data-point for light colour / brightness value. Default: "8" */
+    "dpColor": 8,
+
+    /* Data-point for the water-level status. Default: "9" */
+    "dpWaterLevel": 9,
+
+    /* Override the white / colour mode phrases if your device disagrees
+       (both British "cmdColour" and American "cmdColor" are accepted).
+       Defaults: "white" / "colour" */
+    "cmdWhite": "white",
+    "cmdColor": "colour"
+}
+```
+
+### Water Valves / Single Sprinklers
+A single irrigation/shower/faucet valve exposed as a HomeKit Valve, with an optional auto-shutoff run timer. For multi-zone controllers use `IrrigationSystem` instead.
+
+```json5
+{
+    "name": "My Valve",
+    "type": "watervalve",
+    "manufacturer": "Generic",
+    "model": "Smart Water Valve",
+    "id": "032000123456789abcde",
+    "key": "0123456789abcdef",
+
+    /* Additional parameters to override defaults only if needed */
+
+    /* Data-point for the valve on/off. Default: "1" */
+    "dpPower": 1,
+
+    /* HomeKit valve type. One of "IRRIGATION", "SHOWER_HEAD", "WATER_FAUCET"
+       (case-sensitive); anything else shows as a generic valve. Default: generic */
+    "valveType": "IRRIGATION",
+
+    /* Default run time, in seconds, when the valve is switched on. Default: 600 */
+    "defaultDuration": 600,
+
+    /* Don't expose the run timer (Set/Remaining Duration) at all. Default: false */
+    "noTimer": false
 }
 ```
