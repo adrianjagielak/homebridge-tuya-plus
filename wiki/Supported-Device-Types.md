@@ -723,7 +723,7 @@ These are accessories that may act as a regulator switch or an inbuilt regulator
     "dpRotationSpeed": "2",
 
     /* Override the default datapoint identifier of direction control (forward/reverse) */
-    "dpRotationDirection": 63
+    "dpFanDirection": 63
 }
 ```
 
@@ -749,7 +749,7 @@ These are accessories that combine fan and lighting control in one device. Suppo
     "dpActive": 60,
     "dpRotationSpeed": 62,
     "maxSpeed": 9,
-    "dpRotationDirection": 63
+    "dpFanDirection": 63
 }
 ```
 
@@ -769,6 +769,48 @@ If the light, brightness and turning the fan **off** all work, but turning the f
     "singleDpWrites": true
 }
 ```
+
+#### Lights that use `On`/`Off` text values instead of a boolean
+
+Some fans (e.g. the **Orient AEON V.C.**) type their light data point as an *enum of text values* — it sends `"On"` / `"Off"` strings rather than a boolean. With such a fan the light appears in HomeKit but toggling it does nothing, because the plugin's default light handling expects a boolean. Set `"lightUseEnum": true` to make the plugin read and write the text values instead. The command strings default to `"On"` / `"Off"` and can be overridden with `lightOnCommand` / `lightOffCommand`.
+
+#### Direction carried on a shared "mode" data point
+
+On some fans, forward/reverse is not its own data point — it is one of several values of a shared *mode* data point (e.g. a `Windmode` enum with values like `Normal`, `Reverse`, `Sleep`, `Breeze`). Point `dpFanDirection` at that data point and set `directionForwardCommand` / `directionReverseCommand` to the values it uses (they default to `"forward"` / `"reverse"`). HomeKit's clockwise/counter-clockwise direction toggle then maps onto `Normal` / `Reverse`. Any other mode value (`Sleep`, `Breeze`, …) set from the Tuya app simply reads back as the forward direction.
+
+> Note: because direction shares the mode data point, selecting a normal speed writes `Normal` to it, so the fan can only be in one mode at a time — this mirrors how the physical fan works. Modes that HomeKit has no control for (Turbo, Sleep, Breeze) and the countdown timer are not exposed; set them from the Tuya / Smart Life app.
+
+A full example for the Orient AEON V.C. (Power = DP 1, WindSpeed enum `"1"`–`"5"` = DP 2, Windmode = DP 3, Light enum `"On"`/`"Off"` = DP 101):
+
+```json5
+{
+    "type": "FanLight",
+    "name": "Orient AEON Fan",
+    "id": "032000123456789abcde",
+    "key": "0123456789abcdef",
+
+    /* Power (boolean) */
+    "dpFanOn": 1,
+
+    /* WindSpeed enum "1".."5" — parsed as levels 1..5 and sent as strings */
+    "dpRotationSpeed": 2,
+    "maxSpeed": 5,
+    "useStrings": true,
+
+    /* Light is an "On"/"Off" enum, not a boolean; no brightness/colour temp */
+    "dpLightOn": 101,
+    "lightUseEnum": true,
+    "useBrightness": false,
+    "useColorTemp": false,
+
+    /* Direction lives on the Windmode data point as Normal/Reverse */
+    "dpFanDirection": 3,
+    "directionForwardCommand": "Normal",
+    "directionReverseCommand": "Reverse"
+}
+```
+
+> On this fan, reverse airflow only runs at the lower speeds — that limit is enforced by the fan's own firmware, not the plugin, so the HomeKit speed slider still shows the full range.
 
 ### Irrigation Systems / Sprinklers
 

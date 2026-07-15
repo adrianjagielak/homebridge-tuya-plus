@@ -14,13 +14,19 @@ function makeFanLight(state = {}, context = {}) {
 
     instance.dpFanOn = '60';
     instance.dpRotationSpeed = '62';
-    instance.dpFanDirection = '63';
+    instance.dpFanDirection = device.context.dpFanDirection || '63';
+    instance.dpLightOn = device.context.dpLightOn || '20';
     instance.dpColorTemp = '23';
     instance.maxSpeed = parseInt(device.context.maxSpeed) || 6;
     instance.fanDefaultSpeed = parseInt(device.context.fanDefaultSpeed) || 1;
     instance.fanCurrentSpeed = 0;
     instance.useStrings = instance._coerceBoolean(device.context.useStrings, true);
     instance.singleDpWrites = instance._coerceBoolean(device.context.singleDpWrites, false);
+    instance.lightUseEnum = instance._coerceBoolean(device.context.lightUseEnum, false);
+    instance.lightOnCommand = device.context.lightOnCommand || 'On';
+    instance.lightOffCommand = device.context.lightOffCommand || 'Off';
+    instance.directionForwardCommand = device.context.directionForwardCommand || 'forward';
+    instance.directionReverseCommand = device.context.directionReverseCommand || 'reverse';
     if (device.context.minWhiteColor !== undefined) instance.minWhiteColor = parseInt(device.context.minWhiteColor);
     if (device.context.maxWhiteColor !== undefined) instance.maxWhiteColor = parseInt(device.context.maxWhiteColor);
 
@@ -161,6 +167,119 @@ describe('SimpleFanLightAccessory — setFanOn(false)', () => {
         expect(instance.fanCurrentSpeed).toBe(0);
         expect(device.update).toHaveBeenCalledTimes(1);
         expect(device.update).toHaveBeenCalledWith({ '60': false });
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Enum light on/off: fans whose Light DP is an 'On'/'Off' enum rather than a
+// boolean (e.g. Orient AEON V.C.). Default stays boolean for compatibility.
+// ---------------------------------------------------------------------------
+describe('SimpleFanLightAccessory — enum light (lightUseEnum)', () => {
+    test('reads the enum command strings, not truthiness', () => {
+        const { instance } = makeFanLight(
+            { '20': 'Off' },
+            { lightUseEnum: true }
+        );
+        // The boolean path would read the non-empty string 'Off' as ON (the bug).
+        expect(instance.getLightOn()).toBe(false);
+        instance.device.state['20'] = 'On';
+        expect(instance.getLightOn()).toBe(true);
+    });
+
+    test('setLightOn writes the On/Off command strings', () => {
+        const { instance, device } = makeFanLight(
+            { '20': 'Off' },
+            { lightUseEnum: true }
+        );
+
+        instance.setLightOn(true);
+        expect(device.update).toHaveBeenCalledWith({ '20': 'On' });
+
+        device.state['20'] = 'On';
+        instance.setLightOn(false);
+        expect(device.update).toHaveBeenCalledWith({ '20': 'Off' });
+    });
+
+    test('honours custom on/off command strings', () => {
+        const { instance, device } = makeFanLight(
+            { '101': 'off' },
+            { dpLightOn: '101', lightUseEnum: true, lightOnCommand: 'on', lightOffCommand: 'off' }
+        );
+
+        expect(instance.getLightOn()).toBe(false);
+        instance.setLightOn(true);
+        expect(device.update).toHaveBeenCalledWith({ '101': 'on' });
+    });
+
+    test('default (flag off) keeps the boolean behaviour', () => {
+        const { instance, device } = makeFanLight({ '20': false });
+
+        expect(instance._getLightOn(true)).toBe(true);
+        expect(instance._getLightOn(false)).toBe(false);
+
+        instance.setLightOn(true);
+        expect(device.update).toHaveBeenCalledWith({ '20': true });
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Configurable direction commands: map a shared "mode" DP (Windmode
+// Normal/Reverse) onto HomeKit's RotationDirection toggle.
+// ---------------------------------------------------------------------------
+describe('SimpleFanLightAccessory — configurable direction commands', () => {
+    const { RotationDirection } = HAP.Characteristic;
+
+    test('reads the reverse command as COUNTER_CLOCKWISE', () => {
+        const { instance } = makeFanLight(
+            { '3': 'Reverse' },
+            { dpFanDirection: '3', directionForwardCommand: 'Normal', directionReverseCommand: 'Reverse' }
+        );
+
+        expect(instance.getFanDirection()).toBe(RotationDirection.COUNTER_CLOCKWISE);
+        instance.device.state['3'] = 'Normal';
+        expect(instance.getFanDirection()).toBe(RotationDirection.CLOCKWISE);
+        // Unrelated Windmode values (e.g. Sleep set from the Tuya app) read as forward.
+        instance.device.state['3'] = 'Sleep';
+        expect(instance.getFanDirection()).toBe(RotationDirection.CLOCKWISE);
+    });
+
+    test('setFanDirection writes the configured command strings', () => {
+        const { instance, device } = makeFanLight(
+            { '3': 'Normal' },
+            { dpFanDirection: '3', directionForwardCommand: 'Normal', directionReverseCommand: 'Reverse' }
+        );
+
+        instance.setFanDirection(RotationDirection.COUNTER_CLOCKWISE);
+        expect(device.update).toHaveBeenCalledWith({ '3': 'Reverse' });
+
+        device.state['3'] = 'Reverse';
+        instance.setFanDirection(RotationDirection.CLOCKWISE);
+        expect(device.update).toHaveBeenCalledWith({ '3': 'Normal' });
+    });
+
+    test('defaults remain forward/reverse when unconfigured', () => {
+        const { instance, device } = makeFanLight({ '63': 'forward' });
+
+        expect(instance._getFanDirection('reverse')).toBe(RotationDirection.COUNTER_CLOCKWISE);
+        instance.setFanDirection(RotationDirection.COUNTER_CLOCKWISE);
+        expect(device.update).toHaveBeenCalledWith({ '63': 'reverse' });
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Direction DP resolution: dpFanDirection overrides the default DP.
+// ---------------------------------------------------------------------------
+describe('SimpleFanLightAccessory — direction DP resolution', () => {
+    test('honours the dpFanDirection config key', () => {
+        const { instance } = makeInstance(SimpleFanLightAccessory, {}, { type: 'FanLight', dpFanDirection: 3 });
+        instance._registerCharacteristics({});
+        expect(instance.dpFanDirection).toBe('3');
+    });
+
+    test('defaults to DP 63 when unset', () => {
+        const { instance } = makeInstance(SimpleFanLightAccessory, {}, { type: 'FanLight' });
+        instance._registerCharacteristics({});
+        expect(instance.dpFanDirection).toBe('63');
     });
 });
 

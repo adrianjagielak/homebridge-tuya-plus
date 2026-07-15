@@ -531,7 +531,7 @@
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['Convector', 'Fan', 'FanLight'].includes(model.devices[arrayIndices].type);"
               }
             },
-            "dpRotationDirection": {
+            "dpFanDirection": {
               "type": "integer",
               "placeholder": "63",
               "condition": {
@@ -564,6 +564,51 @@
               "description": "Enable if turning the fan on or changing its speed is silently ignored. Some fan firmwares reject LAN packets that carry more than one data point, so the fan on/off and speed are sent as separate packets instead of combined.",
               "type": "boolean",
               "placeholder": false,
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['FanLight'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "lightUseEnum": {
+              "title": "Light uses On/Off text values",
+              "description": "Enable if the light appears in HomeKit but toggling it does nothing. Some fans type the light data point as an enum of text values (e.g. \"On\"/\"Off\") rather than a boolean.",
+              "type": "boolean",
+              "placeholder": false,
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['FanLight'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "lightOnCommand": {
+              "title": "Light \"on\" value",
+              "description": "The text value sent to turn the light on when \"Light uses On/Off text values\" is enabled.",
+              "type": "string",
+              "placeholder": "On",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['FanLight'].includes(model.devices[arrayIndices].type) && model.devices[arrayIndices].lightUseEnum;"
+              }
+            },
+            "lightOffCommand": {
+              "title": "Light \"off\" value",
+              "description": "The text value sent to turn the light off when \"Light uses On/Off text values\" is enabled.",
+              "type": "string",
+              "placeholder": "Off",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['FanLight'].includes(model.devices[arrayIndices].type) && model.devices[arrayIndices].lightUseEnum;"
+              }
+            },
+            "directionForwardCommand": {
+              "title": "Forward direction value",
+              "description": "The value sent for the normal/forward direction. Set this when direction lives on a shared \"mode\" data point (e.g. Windmode \"Normal\").",
+              "type": "string",
+              "placeholder": "forward",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['FanLight'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "directionReverseCommand": {
+              "title": "Reverse direction value",
+              "description": "The value sent for the reverse direction. Set this when direction lives on a shared \"mode\" data point (e.g. Windmode \"Reverse\").",
+              "type": "string",
+              "placeholder": "reverse",
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['FanLight'].includes(model.devices[arrayIndices].type);"
               }
