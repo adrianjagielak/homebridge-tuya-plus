@@ -732,7 +732,16 @@ These are accessories that may act as a regulator switch or an inbuilt regulator
     "dpRotationSpeed": "2",
 
     /* Override the default datapoint identifier of direction control (forward/reverse) */
-    "dpRotationDirection": 63
+    "dpRotationDirection": 63,
+
+    /* Datapoint of the oscillation switch (a boolean DP). When set, a Swing
+       (oscillation) control is shown in the Home app. Omit if the fan has none. */
+    "dpSwing": 4,
+
+    /* Hide the rotation direction control. Enable for fans that have no
+       forward/reverse, or whose direction datapoint is actually a mode enum,
+       so forward/reverse is never written into it. */
+    "noDirection": true
 }
 ```
 

@@ -538,6 +538,23 @@
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['Fan', 'FanLight'].includes(model.devices[arrayIndices].type);"
               }
             },
+            "dpSwing": {
+              "title": "Swing/oscillation DP",
+              "description": "Data point of the fan's oscillation switch (a boolean DP). When set, a Swing (oscillation) control is shown in the Home app. Leave empty if the fan has no oscillation.",
+              "type": "integer",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['Fan'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "noDirection": {
+              "title": "Hide the rotation direction control",
+              "description": "Enable if the fan has no forward/reverse direction, or if the direction data point is actually a mode enum. Prevents writing forward/reverse into that data point.",
+              "type": "boolean",
+              "placeholder": false,
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['Fan'].includes(model.devices[arrayIndices].type);"
+              }
+            },
             "maxSpeed": {
               "type": "integer",
               "placeholder": "3",
