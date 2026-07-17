@@ -785,7 +785,7 @@ It is common for `HEXHSB` devices to use white color temperature and brightness 
 ### Smart Fan Regulators and Accessories
 These are accessories that may act as a regulator switch or an inbuilt regulator to your ceiling fan. Supported features include on/off switching, speed controls (generally managed through two buttons, one speed at a time in each direction, up and down), and direction control (forward/reverse). There are two kinds of regulator devices: (1) the most common ones use 3 speed controls, and (2) others use 5 speed controls which are found compatible with most fan regulators in India, Australia, and the UK.
 
-Every option below is optional — the defaults match a common 3-speed fan. The data-point keys are **`dpFanOn` / `dpRotationSpeed` / `dpFanDirection`** (not `dpActive`).
+Every option below is optional — the defaults match a common 3-speed fan. The data-point keys are **`dpFanOn` / `dpRotationSpeed` / `dpFanDirection`**.
 
 ```json5
 {
@@ -828,7 +828,7 @@ Every option below is optional — the defaults match a common 3-speed fan. The 
 ### Smart Fan with Light
 These are accessories that combine fan and lighting control in one device. Supported features include on/off switching, speed control, direction control (forward/reverse), as well as light power, brightness, and color temperature controls. There are multiple kinds of devices with different speed and light control capabilities.
 
-> **⚠️ Key names matter.** This accessory uses **`dpFanOn`**, **`dpFanDirection`**, **`dpLightOn`** and **`dpColorTemp`** — *not* `dpActive`, `dpLight` or `dpColorTemperature`. It also does **not** read `minBrightness` or `scaleBrightness`: brightness is always on Tuya's standard 10–1000 scale, and color temperature on Tuya's 0–1000 scale (mapped to the mired range below). Every option is optional; defaults are shown.
+> **Key names.** This accessory uses **`dpFanOn`**, **`dpRotationSpeed`**, **`dpFanDirection`**, **`dpLightOn`** and **`dpColorTemp`**. Brightness is on Tuya's standard 10–1000 scale and colour temperature on Tuya's 0–1000 scale (mapped to the mired range below). Every option is optional; defaults are shown.
 
 ```json5
 {
