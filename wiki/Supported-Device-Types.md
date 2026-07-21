@@ -466,6 +466,15 @@ While still in early testing, you can use this to open and close the garage door
 }
 ```
 
+**Manufacturer-specific defaults.** Most openers report a plain boolean state on a numeric data-point. Some report string states and use different action/status data-points; set `manufacturer` and the plugin picks sensible defaults for you (each still overridable with `dpAction`/`dpStatus`):
+
+| `manufacturer` | `dpAction` | `dpStatus` | State values |
+|---|---|---|---|
+| _(any other)_ | `1` | `2` | boolean (`true`/`false`) |
+| `Kogan` | `101` | `102` | strings (`opened` / `openning` / `opening` / `closing` / `closed`) |
+| `Wofea` | `1` | `101` | boolean (`true`/`false`) |
+| `Daspi` | `1` | `7` | strings (`full_opened` / `opening` / `open_softstop` / `full_closed` / `closing` / `close_softstop`); commands are capitalized `Open` / `Close` |
+
 ### Simple Garage Doors
 For sliding gate openers and garage door controllers that expose momentary
 open/stop/close action DPs plus a single status DP that reports the gate's
@@ -723,7 +732,16 @@ These are accessories that may act as a regulator switch or an inbuilt regulator
     "dpRotationSpeed": "2",
 
     /* Override the default datapoint identifier of direction control (forward/reverse) */
-    "dpFanDirection": 63
+    "dpFanDirection": 63,
+
+    /* Datapoint of the oscillation switch (a boolean DP). When set, a Swing
+       (oscillation) control is shown in the Home app. Omit if the fan has none. */
+    "dpSwing": 4,
+
+    /* Hide the rotation direction control. Enable for fans that have no
+       forward/reverse, or whose direction datapoint is actually a mode enum,
+       so forward/reverse is never written into it. */
+    "noDirection": true
 }
 ```
 
