@@ -792,7 +792,7 @@ It is common for `HEXHSB` devices to use white color temperature and brightness 
 ```
 
 ### Smart Fan Regulators and Accessories
-These are accessories that may act as a regulator switch or an inbuilt regulator to your ceiling fan. Supported features include on/off switching, speed controls (generally managed through two buttons, one speed at a time in each direction, up and down), and direction control (forward/reverse). There are two kinds of regulator devices: (1) the most common ones use 3 speed controls, and (2) others use 5 speed controls which are found compatible with most fan regulators in India, Australia, and the UK.
+These are accessories that may act as a regulator switch or an inbuilt regulator to your ceiling fan. Supported features include on/off switching, speed controls (generally managed through two buttons, one speed at a time in each direction, up and down), direction control (forward/reverse), and optional oscillation (swing). There are two kinds of regulator devices: (1) the most common ones use 3 speed controls, and (2) others use 5 speed controls which are found compatible with most fan regulators in India, Australia, and the UK.
 
 Every option below is optional — the defaults match a common 3-speed fan. The data-point keys are **`dpFanOn` / `dpRotationSpeed` / `dpFanDirection`**.
 
@@ -830,7 +830,16 @@ Every option below is optional — the defaults match a common 3-speed fan. The 
 
     /* Send fan on/off and speed together in one legacy control packet.
        Set false if your firmware ignores multi-DP packets. Default: true */
-    "useMultiState": true
+    "useMultiState": true,
+
+    /* Data-point of the oscillation switch (a boolean DP). When set, a Swing
+       (oscillation) control appears in the Home app. Omit if the fan can't oscillate. */
+    "dpSwing": 4,
+
+    /* Drop the direction control entirely — for fans whose "direction" DP is
+       actually a mode enum (e.g. nature/sleep/smart), so HomeKit won't write
+       forward/reverse into it. Default: false */
+    "noDirection": true
 }
 ```
 
