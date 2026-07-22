@@ -898,10 +898,6 @@ These are accessories that combine fan and lighting control in one device. Suppo
     /* Data-point for brightness (Tuya 10–1000 scale). Default: "22" */
     "dpBrightness": 22,
 
-    "dpActive": 60,
-    "dpRotationSpeed": 62,
-    "maxSpeed": 9,
-    "dpFanDirection": 63
     /* Expose a colour-temperature control. Default: true */
     "useColorTemp": true,
 
