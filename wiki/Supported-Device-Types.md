@@ -1214,6 +1214,11 @@ Aroma diffusers and humidifiers with mist on/off, mist intensity (speed) and an 
     /* Data-point for light colour / brightness value. Default: "8" */
     "dpColor": 8,
 
+    /* Data-point for a colour-temperature value, if your diffuser reports one.
+       Unset by default: these diffusers have no such data-point, and HomeKit's
+       temperature slider is served by writing the matching colour instead. */
+    "dpColorTemperature": 4,
+
     /* Data-point for the water-level status. Default: "9" */
     "dpWaterLevel": 9,
 

@@ -82,6 +82,16 @@ describe('RGBTWLightAccessory.getColorTemperature', () => {
         expect(typeof result).toBe('number');
         expect(Number.isFinite(result)).toBe(true);
     });
+
+    // HomeKit warns about every non-finite read, so a white-mode light whose
+    // colour-temperature dp hasn't been reported yet must still answer in range.
+    test('returns an in-range value when the color temperature dp is missing', () => {
+        const { instance } = makeLight({ '2': 'white' });
+        const result = instance.getColorTemperature();
+        expect(Number.isFinite(result)).toBe(true);
+        expect(result).toBeGreaterThanOrEqual(instance.minWhiteColor);
+        expect(result).toBeLessThanOrEqual(instance.maxWhiteColor);
+    });
 });
 
 // ---------------------------------------------------------------------------
