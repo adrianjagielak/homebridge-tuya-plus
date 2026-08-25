@@ -26,9 +26,8 @@
  */
 
 const { execFileSync } = require('child_process');
-const path = require('path');
 
-const pkgJson = require(path.join(__dirname, '..', 'package.json'));
+const pkgJson = require('../package.json');
 const PKG = pkgJson.name;
 const NPM = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
