@@ -505,9 +505,10 @@
             },
             "dpCurrentTemperature": {
               "type": "integer",
+              "title": "Current Temperature DP",
               "placeholder": "3",
               "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices] && ['Convector', 'SimpleHeater'].includes(model.devices[arrayIndices].type);"
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['Convector', 'SimpleHeater', 'Fan', 'FanLight'].includes(model.devices[arrayIndices].type);"
               }
             },
             "dpLightOn": {
@@ -553,6 +554,14 @@
               "placeholder": false,
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['Fan'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "directionUseBool": {
+              "title": "Use Boolean for Direction",
+              "type": "boolean",
+              "description": "Sends true/false instead of forward/reverse strings for oscillation/direction.",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['Fan', 'FanLight'].includes(model.devices[arrayIndices].type);"
               }
             },
             "maxSpeed": {
