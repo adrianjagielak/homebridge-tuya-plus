@@ -66,10 +66,13 @@ describe('convertColorTemperatureFromTuyaToHomeKit', () => {
         expect(instance.convertColorTemperatureFromTuyaToHomeKit(0)).toBe(400);
     });
 
-    test('clamps result to [71, 600]', () => {
-        const { instance } = make();
-        expect(instance.convertColorTemperatureFromTuyaToHomeKit(255)).toBeGreaterThanOrEqual(71);
-        expect(instance.convertColorTemperatureFromTuyaToHomeKit(0)).toBeLessThanOrEqual(600);
+    test('clamps result to the configured mired window', () => {
+        const { instance } = make({}, { minWhiteColor: 154, maxWhiteColor: 370 });
+        for (const tuya of [-500, 0, 128, 255, 5000]) {
+            const hk = instance.convertColorTemperatureFromTuyaToHomeKit(tuya);
+            expect(hk).toBeGreaterThanOrEqual(154);
+            expect(hk).toBeLessThanOrEqual(370);
+        }
     });
 
     test('round-trips with convertColorTemperatureFromHomeKitToTuya at boundaries', () => {
@@ -77,6 +80,38 @@ describe('convertColorTemperatureFromTuyaToHomeKit', () => {
         for (const hk of [140, 200, 300, 400]) {
             const tuya = instance.convertColorTemperatureFromHomeKitToTuya(hk);
             expect(instance.convertColorTemperatureFromTuyaToHomeKit(tuya)).toBe(hk);
+        }
+    });
+
+    // A missing/unusable data point used to convert to NaN, which HomeKit
+    // rejects with a characteristic warning on every read (issue #34).
+    test('falls back to the coolest mired for an unreported data point', () => {
+        const { instance } = make();
+        for (const unusable of [undefined, null, '', 'abc', true, {}]) {
+            expect(instance.convertColorTemperatureFromTuyaToHomeKit(unusable)).toBe(140);
+        }
+    });
+
+    test('reads a data point reported as a string', () => {
+        const { instance } = make();
+        expect(instance.convertColorTemperatureFromTuyaToHomeKit('255')).toBe(140);
+        expect(instance.convertColorTemperatureFromTuyaToHomeKit('0')).toBe(400);
+    });
+
+    test('accepts a mired window configured as strings', () => {
+        const { instance } = make({}, { minWhiteColor: '154', maxWhiteColor: '370' });
+        expect(instance.convertColorTemperatureFromTuyaToHomeKit(255)).toBe(154);
+        expect(instance.convertColorTemperatureFromTuyaToHomeKit(0)).toBe(370);
+    });
+});
+
+describe('convertColorTemperatureFromHomeKitToTuya', () => {
+    test('never returns NaN for an unusable value', () => {
+        const { instance } = make();
+        for (const unusable of [undefined, null, '', 'abc', NaN]) {
+            const tuya = instance.convertColorTemperatureFromHomeKitToTuya(unusable);
+            expect(Number.isFinite(tuya)).toBe(true);
+            expect(tuya).toBe(instance.convertColorTemperatureFromHomeKitToTuya(140));
         }
     });
 });
