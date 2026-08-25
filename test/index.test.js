@@ -166,6 +166,49 @@ describe('TuyaLan — debug.forceCloudFallback', () => {
     });
 });
 
+describe('TuyaLan — debug.logDebugAsInfo', () => {
+    // The platform wraps its logger and threads it down to every
+    // device/accessory/cloud component, so promoting it once routes the
+    // plugin's whole debug stream to info. Build the platform directly here to
+    // keep a handle on the underlying logger mock the wrapper delegates to.
+    function platformWith(config) {
+        const Platform = getPlatformClass();
+        const rawLog = makeLog();
+        return [new Platform(rawLog, config, makeApi()), rawLog];
+    }
+
+    test('routes a debug line to info', () => {
+        const [platform, rawLog] = platformWith({debug: {logDebugAsInfo: true}, devices: [SW()]});
+        platform.log.debug('hello', 1);
+        expect(rawLog.info).toHaveBeenCalledWith('hello', 1);
+        expect(rawLog.debug).not.toHaveBeenCalledWith('hello', 1);
+    });
+
+    test('the wrapped logger passes the callable form and info/warn/error straight through', () => {
+        const [platform, rawLog] = platformWith({debug: {logDebugAsInfo: true}, devices: [SW()]});
+        platform.log('plain');
+        platform.log.warn('careful');
+        platform.log.error('broke');
+        expect(rawLog).toHaveBeenCalledWith('plain');
+        expect(rawLog.warn).toHaveBeenCalledWith('careful');
+        expect(rawLog.error).toHaveBeenCalledWith('broke');
+    });
+
+    test('off (or absent) leaves the logger untouched and debug going to debug', () => {
+        const [platform, rawLog] = platformWith({devices: [SW()]});
+        expect(platform.log).toBe(rawLog);
+        platform.log.debug('quiet');
+        expect(rawLog.debug).toHaveBeenCalledWith('quiet');
+        expect(rawLog.info).not.toHaveBeenCalledWith('quiet');
+    });
+
+    test('lenient boolean spellings are accepted', () => {
+        const [platform, rawLog] = platformWith({debug: {logDebugAsInfo: 'true'}, devices: [SW()]});
+        platform.log.debug('promote me');
+        expect(rawLog.info).toHaveBeenCalledWith('promote me');
+    });
+});
+
 describe('TuyaLan — unconfigured device discovery', () => {
     const UNKNOWN = {id: 'bf99999999999999', ip: '10.0.0.9'};
     const BARE = 'Discovered a device that has not been configured yet (%s@%s).';

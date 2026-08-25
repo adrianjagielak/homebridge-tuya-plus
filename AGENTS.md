@@ -149,6 +149,11 @@ optional, off-by-default flags read through `_debugConfig()` and coerced with
   (token, signature, password, access key/id, uid) redacted. Verbose and
   per-request — keep it off in normal operation, and remember Homebridge
   debug logging must be on to see it.
+- `debug.logDebugAsInfo` — promote every `this.log.debug` line to `info` by
+  wrapping the platform logger (threaded down to every device/accessory/cloud
+  component). Lets a user capture the plugin's verbose protocol/state logging
+  without enabling Homebridge's global debug mode. Chatty by design — a
+  troubleshooting switch, not for normal operation.
 
 ## Git & PR workflow
 
