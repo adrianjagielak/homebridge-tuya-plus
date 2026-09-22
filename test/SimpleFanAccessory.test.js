@@ -68,6 +68,66 @@ describe('SimpleFanAccessory.getSwingMode / setSwingMode', () => {
 });
 
 // ---------------------------------------------------------------------------
+// swingOnCommand / swingOffCommand — fans whose swing DP is an enum, not a bool
+// ---------------------------------------------------------------------------
+describe('SimpleFanAccessory swing value mapping', () => {
+    // Runs _registerCharacteristics so the swing commands are resolved exactly as
+    // they are at runtime, then drives the read/write helpers directly.
+    const configure = (state, context) => {
+        const result = makeInstance(SimpleFanAccessory, state, { type: 'Fan', dpSwing: 4, ...context });
+        result.instance._registerCharacteristics(result.instance.device.state);
+        return result;
+    };
+
+    const enumCommands = { swingOnCommand: '1', swingOffCommand: '0' };
+
+    test('reads the configured values instead of guessing from truthiness', () => {
+        const { instance } = configure({ '4': '0' }, enumCommands);
+        expect(instance.getSwingMode()).toBe(SwingMode.SWING_DISABLED);
+        expect(instance._getSwingMode('1')).toBe(SwingMode.SWING_ENABLED);
+    });
+
+    test('matches values configured as numbers against a device that reports strings', () => {
+        const { instance } = configure({ '4': '0' }, { swingOnCommand: 1, swingOffCommand: 0 });
+        expect(instance._getSwingMode('1')).toBe(SwingMode.SWING_ENABLED);
+        expect(instance._getSwingMode('0')).toBe(SwingMode.SWING_DISABLED);
+    });
+
+    test('writes the configured values rather than a boolean', () => {
+        const { instance, device } = configure({ '4': '0' }, enumCommands);
+        instance.setSwingMode(SwingMode.SWING_ENABLED);
+        expect(device.update).toHaveBeenCalledWith({ '4': '1' });
+
+        const off = configure({ '4': '1' }, enumCommands);
+        off.instance.setSwingMode(SwingMode.SWING_DISABLED);
+        expect(off.device.update).toHaveBeenCalledWith({ '4': '0' });
+    });
+
+    test('keeps the boolean data point when no values are configured', () => {
+        const { instance, device } = configure({ '4': false }, {});
+        expect(instance._getSwingMode(true)).toBe(SwingMode.SWING_ENABLED);
+        expect(instance._getSwingMode(false)).toBe(SwingMode.SWING_DISABLED);
+        instance.setSwingMode(SwingMode.SWING_ENABLED);
+        expect(device.update).toHaveBeenCalledWith({ '4': true });
+    });
+
+    test('treats values cleared in the Homebridge UI as unset', () => {
+        const { instance, device, platform } = configure({ '4': false }, { swingOnCommand: '', swingOffCommand: '' });
+        expect(platform.log.warn).not.toHaveBeenCalled();
+        instance.setSwingMode(SwingMode.SWING_ENABLED);
+        expect(device.update).toHaveBeenCalledWith({ '4': true });
+    });
+
+    test('warns and stays boolean when only one of the two values is configured', () => {
+        const { instance, device, platform } = configure({ '4': false }, { swingOnCommand: '1' });
+        expect(platform.log.warn).toHaveBeenCalled();
+        expect(instance._getSwingMode(true)).toBe(SwingMode.SWING_ENABLED);
+        instance.setSwingMode(SwingMode.SWING_ENABLED);
+        expect(device.update).toHaveBeenCalledWith({ '4': true });
+    });
+});
+
+// ---------------------------------------------------------------------------
 // Registration — SwingMode is opt-in and RotationDirection is opt-out
 // ---------------------------------------------------------------------------
 describe('SimpleFanAccessory._registerCharacteristics', () => {

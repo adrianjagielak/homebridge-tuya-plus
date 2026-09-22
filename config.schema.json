@@ -493,7 +493,7 @@
               "type": "integer",
               "placeholder": "7",
               "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices] && ['Convector', 'SimpleHeater', 'Fan', 'FanLight'].includes(model.devices[arrayIndices].type);"
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['Convector', 'SimpleHeater'].includes(model.devices[arrayIndices].type);"
               }
             },
             "dpDesiredTemperature": {
@@ -541,10 +541,26 @@
             },
             "dpSwing": {
               "title": "Swing/oscillation DP",
-              "description": "Data point of the fan's oscillation switch (a boolean DP). When set, a Swing (oscillation) control is shown in the Home app. Leave empty if the fan has no oscillation.",
+              "description": "Data point of the fan's oscillation switch. When set, a Swing (oscillation) control is shown in the Home app. Leave empty if the fan has no oscillation. The data point is treated as a boolean unless the two swing values below are set.",
               "type": "integer",
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['Fan'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "swingOnCommand": {
+              "title": "Value that turns oscillation on",
+              "description": "Set this together with the value below when the oscillation data point is an enum rather than a boolean (many fans use the strings \"1\" and \"0\"). The value is sent to the device exactly as written, and the swing reads as on only while the data point matches it.",
+              "type": "string",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['Fan'].includes(model.devices[arrayIndices].type) && model.devices[arrayIndices].dpSwing;"
+              }
+            },
+            "swingOffCommand": {
+              "title": "Value that turns oscillation off",
+              "description": "The counterpart of the value above; both must be set for either to take effect.",
+              "type": "string",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['Fan'].includes(model.devices[arrayIndices].type) && model.devices[arrayIndices].dpSwing;"
               }
             },
             "noDirection": {

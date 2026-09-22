@@ -835,9 +835,15 @@ Every option below is optional — the defaults match a common 3-speed fan. The 
        Set false if your firmware ignores multi-DP packets. Default: true */
     "useMultiState": true,
 
-    /* Data-point of the oscillation switch (a boolean DP). When set, a Swing
-       (oscillation) control appears in the Home app. Omit if the fan can't oscillate. */
+    /* Data-point of the oscillation switch. When set, a Swing (oscillation)
+       control appears in the Home app. Omit if the fan can't oscillate. */
     "dpSwing": 4,
+
+    /* The values the oscillation data point takes, for fans that declare it as an
+       enum instead of a boolean (see the note below). Both must be set; left out,
+       the data point is written and read as a boolean. */
+    "swingOnCommand": "1",
+    "swingOffCommand": "0",
 
     /* Drop the direction control entirely — for fans whose "direction" DP is
        actually a mode enum (e.g. nature/sleep/smart), so HomeKit won't write
@@ -845,6 +851,36 @@ Every option below is optional — the defaults match a common 3-speed fan. The 
     "noDirection": true
 }
 ```
+
+#### Oscillation carried on a `"0"`/`"1"` enum data point
+
+Many fans (e.g. the **Duux Whisper Flex**, product `dune79w7bsu6dg3e`, models DXCF10–13) declare their oscillation data point as an *enum of text values* rather than a boolean — a live state dump reads `{"1": true, "2": "0", "3": "1", "4": "0"}`, where only DP 1 is a real boolean. The Swing control then appears in the Home app but does nothing: the boolean the plugin writes is the wrong type, so the fan ignores it, and `"0"` — a non-empty string — reads back as "oscillating", pinning the switch to on.
+
+Set `swingOnCommand` / `swingOffCommand` to the two values the data point actually takes and the plugin writes and compares those instead. They are sent exactly as written, so quote them for a text enum; both must be set, or the data point stays a boolean.
+
+```json5
+{
+    "type": "Fan",
+    "name": "Duux Whisper Flex",
+    "id": "032000123456789abcde",
+    "key": "0123456789abcdef",
+
+    /* Power = DP 1 (a real boolean), speed = DP 3 (the default) */
+    "dpFanOn": 1,
+
+    /* Horizontal oscillation enum "0"/"1" = DP 4 */
+    "dpSwing": 4,
+    "swingOnCommand": "1",
+    "swingOffCommand": "0",
+
+    /* DP 2 is a mode enum on this fan, not a direction — see below */
+    "noDirection": true
+}
+```
+
+> Fans with both axes carry vertical oscillation on a second data point (often DP 5). HomeKit has a single Swing control per fan, so point `dpSwing` at whichever axis you want to control from the Home app and set the other from the Tuya / Smart Life app.
+
+> **Fans in Tuya's `fs` category:** DP 2 is commonly a *mode* enum (`"0"` normal / `"1"` nature / `"2"` sleep), not the forward/reverse direction the `Fan` type defaults to. Writing `forward` / `reverse` into it can make the fan reject whole command packets — including "turn off" — so set `"noDirection": true` on these fans.
 
 ### Smart Fan with Light
 These are accessories that combine fan and lighting control in one device. Supported features include on/off switching, speed control, direction control (forward/reverse), as well as light power, brightness, and color temperature controls. There are multiple kinds of devices with different speed and light control capabilities.
