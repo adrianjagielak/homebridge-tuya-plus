@@ -148,6 +148,10 @@
                   "enum": ["SimpleBlinds"]
                 },
                 {
+                  "title": "Percentage Blinds (position %)",
+                  "enum": ["PercentBlinds"]
+                },
+                {
                   "title": "Vertical Blinds with Tilt",
                   "enum": ["VerticalBlindsWithTilt"]
                 },
@@ -789,7 +793,47 @@
             "flipState": {
               "type": "boolean",
               "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices] && ['GarageDoor','SimpleBlinds'].includes(model.devices[arrayIndices].type);"
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['GarageDoor','SimpleBlinds','PercentBlinds'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "dpPercentControl": {
+              "type": "integer",
+              "placeholder": 2,
+              "description": "Data-point that sets the target position (0-100). Defaults to 2.",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['PercentBlinds'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "dpPercentState": {
+              "type": "integer",
+              "placeholder": 2,
+              "description": "Data-point that reports the current position (0-100). Defaults to the control data-point. Many motors report position on a separate data-point (e.g. 3).",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['PercentBlinds'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "dpWorkState": {
+              "type": "integer",
+              "placeholder": 7,
+              "description": "Optional. Data-point reporting live travel direction (Tuya 'work_state'/'control', usually 7). When set, HomeKit shows opening/closing while the motor moves. Leave empty if unsure.",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['PercentBlinds'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "opening": {
+              "type": "string",
+              "placeholder": "opening",
+              "description": "Optional. Comma is not used; single work-state value that means opening. Defaults recognise opening/open/up.",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['PercentBlinds'].includes(model.devices[arrayIndices].type) && model.devices[arrayIndices].dpWorkState;"
+              }
+            },
+            "closing": {
+              "type": "string",
+              "placeholder": "closing",
+              "description": "Optional. Single work-state value that means closing. Defaults recognise closing/close/down.",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['PercentBlinds'].includes(model.devices[arrayIndices].type) && model.devices[arrayIndices].dpWorkState;"
               }
             },
             "timeToOpen": {
