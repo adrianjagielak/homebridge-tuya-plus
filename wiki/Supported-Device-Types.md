@@ -702,7 +702,20 @@ These are blinds or roller shades that natively report their current position an
     "dpPercentState": "2",
 
     /* If the device reports 0 as fully open instead of fully closed, flip the range */
-    "flipState": true
+    "flipState": true,
+
+    /* Optional. Datapoint that reports live travel direction (Tuya "work_state" /
+       "control", usually "7"). When set, the Home app shows "Opening…"/"Closing…"
+       while the motor is moving and settles to the resting position when it stops.
+       Many motors only report their position (dpPercentState) once travel ends, so
+       without this the tile jumps straight to the target. Leave it out if your
+       device doesn't have such a datapoint. */
+    "dpWorkState": "7",
+
+    /* Optional. Only used with dpWorkState, to override the reported values that
+       mean opening/closing. Defaults recognise opening/open/up and closing/close/down. */
+    "opening": "opening",
+    "closing": "closing"
 }
 ```
 
