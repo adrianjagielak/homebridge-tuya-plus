@@ -15,6 +15,8 @@ const HAP = {
         CurrentHeaterCoolerState: { INACTIVE: 0, IDLE: 1, HEATING: 2, COOLING: 3 },
         TargetHeaterCoolerState: { AUTO: 0, HEAT: 1, COOL: 2 },
         PositionState: { DECREASING: 0, INCREASING: 1, STOPPED: 2 },
+        CurrentPosition: { UUID: '6D' },
+        TargetPosition: { UUID: '7C' },
         LockPhysicalControls: { CONTROL_LOCK_DISABLED: 0, CONTROL_LOCK_ENABLED: 1 },
         TemperatureDisplayUnits: { CELSIUS: 0, FAHRENHEIT: 1 },
         SwingMode: { SWING_DISABLED: 0, SWING_ENABLED: 1 },
