@@ -12,6 +12,7 @@ If you are looking for verified configurations for your specific device, please 
 |White and Color Light Bulb|`RGBTWLight`<sup>[3](#white-and-color-light-bulbs)</sup>|Colored bulbs with tunable white and dimming functionality <small>([instructions](#white-and-color-light-bulbs))</small>|
 |Smart Power Strip|`MultiOutlet`<sup>[4](#smart-power-strips)</sup>|Smart power strips that have sequential data-points and allow each outlet to be turned on and off individually <small>([instructions](#smart-power-strips))</small>|
 |Non-sequential Power Strip|`CustomMultiOutlet`<sup>[5](#non-sequential-power-strips)</sup>|Smart power strips that have non-sequential data-points for each outlet <small>([instructions](#non-sequential-power-strips))</small>|
+|Multi-channel Light Switch|`CustomMultiLight`<sup>[5](#multi-channel-light-switches)</sup>|Multi-gang wall switches / light controllers whose channels should appear as lights, not outlets <small>([instructions](#multi-channel-light-switches))</small>|
 |Barely Smart Power Strip|`Outlet`|Smart power strips that don't allow individual control of the outlets|
 |Air Conditioner|`AirConditioner`<sup>[6](#air-conditioners)</sup>|Cooling and heating devices <small>([instructions](#air-conditioners))</small>|
 |Heat Convector|`Convector`<sup>[7](#heat-convectors)</sup>|Heating panels <small>([instructions](#heat-convectors))</small>|
@@ -230,6 +231,31 @@ Some smart power strips don't have sequential data-points. Using `CustomMultiOut
         {
             "name": "USB 1",
             "dp": 7
+        }
+    ]
+}
+```
+
+### Multi-channel Light Switches
+Multi-gang wall switches and light controllers (e.g. 2-gang on/off switches) whose channels drive lights. `CustomMultiLight` takes the same `outlets` list as `CustomMultiOutlet`, but exposes each channel as a HomeKit light instead of an outlet, so it gets a bulb icon and responds to Siri's "turn on the lights".
+
+```json5
+{
+    "name": "Hallway",
+    "type": "CustomMultiLight",
+    "manufacturer": "Ledvance",
+    "model": "Smart+ 2-gang switch",
+    "id": "032000123456789abcde",
+    "key": "0123456789abcdef",
+    /* One entry per channel; each shows up as "<name> - <device name>". */
+    "outlets": [
+        {
+            "name": "Ceiling",
+            "dp": 1
+        },
+        {
+            "name": "LED strip",
+            "dp": 2
         }
     ]
 }
