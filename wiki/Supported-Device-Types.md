@@ -852,6 +852,23 @@ Every option below is optional — the defaults match a common 3-speed fan. The 
        (oscillation) control appears in the Home app. Omit if the fan can't oscillate. */
     "dpSwing": 4,
 
+    /* For fans whose oscillation DP is an enum of sweep angles rather than a
+       boolean (e.g. "OFF" / "30" / "75" / "120"): the value to send when
+       oscillation is switched on, and the value that means "not oscillating".
+       Any other value is shown as oscillating. Default: true / false */
+    "swingOnValue": "120",
+    "swingOffValue": "OFF",
+
+    /* Data-point of a second, vertical oscillation axis. When set, a separate
+       switch appears in the Home app. Accepts the same on/off values as above.
+       Omit if the fan has a single oscillation axis. */
+    "dpSwingVertical": 6,
+    "swingVerticalOnValue": "60",
+    "swingVerticalOffValue": "OFF",
+
+    /* Name of the vertical swing switch. Default: "<name> Vertical Swing" */
+    "nameSwingVertical": "Tilt",
+
     /* Drop the direction control entirely — for fans whose "direction" DP is
        actually a mode enum (e.g. nature/sleep/smart), so HomeKit won't write
        forward/reverse into it. Default: false */
