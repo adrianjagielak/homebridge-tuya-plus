@@ -553,7 +553,7 @@
             },
             "swingOnValue": {
               "title": "Swing/oscillation on value",
-              "description": "Value to send to the swing DP to start oscillating, for fans whose oscillation DP is an enum of angles (e.g. 120). Leave empty for a boolean DP.",
+              "description": "Value to send to the swing DP to start oscillating, for fans whose oscillation DP is an enum of angles (e.g. 120). Set together with the swing off value. Leave empty for a boolean DP.",
               "type": "string",
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['Fan'].includes(model.devices[arrayIndices].type);"
@@ -561,7 +561,7 @@
             },
             "swingOffValue": {
               "title": "Swing/oscillation off value",
-              "description": "Value of the swing DP that means not oscillating (e.g. OFF). Any other value is shown as oscillating. Leave empty for a boolean DP.",
+              "description": "Value of the swing DP that means not oscillating (e.g. OFF). Any other value is shown as oscillating. Set together with the swing on value. Leave empty for a boolean DP.",
               "type": "string",
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['Fan'].includes(model.devices[arrayIndices].type);"
@@ -577,7 +577,7 @@
             },
             "swingVerticalOnValue": {
               "title": "Vertical swing on value",
-              "description": "Value to send to the vertical swing DP to start oscillating (e.g. 60). Leave empty for a boolean DP.",
+              "description": "Value to send to the vertical swing DP to start oscillating (e.g. 60). Set together with the vertical swing off value. Leave empty for a boolean DP.",
               "type": "string",
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['Fan'].includes(model.devices[arrayIndices].type);"
@@ -585,15 +585,7 @@
             },
             "swingVerticalOffValue": {
               "title": "Vertical swing off value",
-              "description": "Value of the vertical swing DP that means not oscillating (e.g. OFF). Leave empty for a boolean DP.",
-              "type": "string",
-              "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices] && ['Fan'].includes(model.devices[arrayIndices].type);"
-              }
-            },
-            "nameSwingVertical": {
-              "title": "Vertical swing switch name",
-              "description": "Name of the vertical swing switch. Default: the device name followed by \"Vertical Swing\".",
+              "description": "Value of the vertical swing DP that means not oscillating (e.g. OFF). Set together with the vertical swing on value. Leave empty for a boolean DP.",
               "type": "string",
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['Fan'].includes(model.devices[arrayIndices].type);"

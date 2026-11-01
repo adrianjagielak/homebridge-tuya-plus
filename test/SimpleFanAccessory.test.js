@@ -132,9 +132,8 @@ describe('SimpleFanAccessory vertical swing', () => {
         expect(device.update).toHaveBeenCalledWith({ '6': true });
     });
 
-    test('the switch name defaults to the device name and can be overridden', () => {
+    test('the switch is named after the device', () => {
         expect(makeFan({}, vertical).instance._getSwingVerticalName()).toBe('Test Device Vertical Swing');
-        expect(makeFan({}, { ...vertical, nameSwingVertical: 'Tilt' }).instance._getSwingVerticalName()).toBe('Tilt');
     });
 });
 
