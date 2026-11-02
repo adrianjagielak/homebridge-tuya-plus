@@ -148,7 +148,9 @@ class TuyaLan {
     // unless cloud credentials are configured.
     this.cloudApi = null;
     this.cloudMessaging = null;
-    this.api.hap.EnergyCharacteristics = require('./lib/EnergyCharacteristics')(
+    // Kept on the platform, not api.hap: Homebridge 2.5 exposes hap as a
+    // read-only module namespace, so assigning to it throws on startup.
+    this.EnergyCharacteristics = require('./lib/EnergyCharacteristics')(
       this.api.hap,
     );
 

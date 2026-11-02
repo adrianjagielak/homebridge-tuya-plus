@@ -85,6 +85,17 @@ const CLOUD = {accessId: 'aid', accessKey: 'akey', region: 'eu'};
 beforeEach(() => { jest.clearAllMocks(); jest.useFakeTimers(); });
 afterEach(() => { jest.useRealTimers(); });
 
+describe('TuyaLan — read-only api.hap (Homebridge 2.5)', () => {
+    test('constructs without mutating api.hap and keeps the energy characteristics on the platform', () => {
+        const Platform = getPlatformClass();
+        const api = makeApi();
+        Object.freeze(api.hap);
+        const platform = new Platform(makeLog(), {devices: [SW()]}, api);
+        expect(api.hap.EnergyCharacteristics).toBeUndefined();
+        expect(platform.EnergyCharacteristics).toEqual(expect.objectContaining({Volts: expect.any(Function)}));
+    });
+});
+
 describe('TuyaLan — cloud session setup', () => {
     test('no cloud config → no session, devices are pure-LAN', () => {
         run({devices: [SW()]});
