@@ -9,6 +9,7 @@ const { Categories } = HAP;
 // expectation again and the accessory is unregistered & recreated on every
 // Homebridge restart — wiping its name, room and automations (issue #45).
 const CLASS_DEF = {
+    occupancysensor: require('../lib/OccupancySensorAccessory'),
     outlet: require('../lib/OutletAccessory'),
     simplelight: require('../lib/SimpleLightAccessory'),
     rgbtwlight: require('../lib/RGBTWLightAccessory'),

@@ -5,6 +5,7 @@ const TuyaCloudApi = require('./lib/TuyaCloudApi');
 const TuyaCloudMessaging = require('./lib/TuyaCloudMessaging');
 
 const OutletAccessory = require('./lib/OutletAccessory');
+const OccupancySensorAccessory = require('./lib/OccupancySensorAccessory');
 const SimpleLightAccessory = require('./lib/SimpleLightAccessory');
 const MultiOutletAccessory = require('./lib/MultiOutletAccessory');
 const CustomMultiOutletAccessory = require('./lib/CustomMultiOutletAccessory');
@@ -41,6 +42,7 @@ const UUID_SEED = 'homebridge-tuya';
 const DEFAULT_DISCOVER_TIMEOUT = 60000;
 
 const CLASS_DEF = {
+  occupancysensor: OccupancySensorAccessory,
   outlet: OutletAccessory,
   simplelight: SimpleLightAccessory,
   rgbtwlight: RGBTWLightAccessory,

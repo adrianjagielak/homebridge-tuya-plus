@@ -172,6 +172,10 @@
                   "enum": ["AirPurifier"]
                 },
                 {
+                  "title": "Presence Sensor (ZY-M100)",
+                  "enum": ["OccupancySensor"]
+                },
+                {
                   "title": "Irrigation System (Multi-Valve / Sprinkler)",
                   "enum": ["IrrigationSystem"]
                 }
@@ -286,6 +290,24 @@
               "placeholder": "10",
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['Outlet','RGBTWOutlet'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "dpOccupancy": {
+              "type": "integer",
+              "title": "Occupancy Data Point",
+              "minimum": 1,
+              "placeholder": "1",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && model.devices[arrayIndices].type === 'OccupancySensor';"
+              }
+            },
+            "dpLight": {
+              "type": "integer",
+              "title": "Illuminance Data Point",
+              "minimum": 1,
+              "placeholder": "104",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && model.devices[arrayIndices].type === 'OccupancySensor';"
               }
             },
             "dpPower": {
