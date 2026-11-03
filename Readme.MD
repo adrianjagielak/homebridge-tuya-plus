@@ -47,6 +47,7 @@ A community-maintained Homebridge plugin for controlling Tuya devices locally ov
 * Outlets<sup>[14](https://github.com/adrianjagielak/homebridge-tuya-plus/blob/main/wiki/Supported-Device-Types.md#outlets)</sup>
 * [Presence Sensor (ZY-M100)](wiki/Occupancy-Sensors.md) (occupancy and ambient light)
 * Switches<sup>[15](https://github.com/adrianjagielak/homebridge-tuya-plus/blob/main/wiki/Supported-Device-Types.md#switch)</sup>
+* [Contact, Smoke, and Leak Sensors](wiki/Cloud-Sensors.md) (including cloud-only devices)
 * Vertical Blinds<sup>[16](https://github.com/adrianjagielak/homebridge-tuya-plus/blob/main/wiki/Supported-Device-Types.md#vertical-blinds-with-tilt)</sup>
 
 ## Cloud fallback

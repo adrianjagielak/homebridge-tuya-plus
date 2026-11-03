@@ -32,6 +32,9 @@ const OilDiffuserAccessory = require('./lib/OilDiffuserAccessory');
 const DoorbellAccessory = require('./lib/DoorbellAccessory');
 const VerticalBlindsWithTilt = require('./lib/VerticalBlindsWithTilt');
 const PercentBlindsAccessory = require('./lib/PercentBlindsAccessory');
+const ContactSensorAccessory = require('./lib/ContactSensorAccessory');
+const SmokeSensorAccessory = require('./lib/SmokeSensorAccessory');
+const LeakSensorAccessory = require('./lib/LeakSensorAccessory');
 
 const PLUGIN_NAME = 'homebridge-tuya-plus';
 const PLATFORM_NAME = 'TuyaLan';
@@ -70,6 +73,9 @@ const CLASS_DEF = {
   doorbell: DoorbellAccessory,
   verticalblindswithtilt: VerticalBlindsWithTilt,
   percentblinds: PercentBlindsAccessory,
+  contactsensor: ContactSensorAccessory,
+  smokesensor: SmokeSensorAccessory,
+  leaksensor: LeakSensorAccessory,
 };
 
 let Characteristic,

@@ -136,6 +136,18 @@
                   "enum": ["SimpleHeater"]
                 },
                 {
+                  "title": "Contact Sensor",
+                  "enum": ["ContactSensor"]
+                },
+                {
+                  "title": "Smoke Sensor",
+                  "enum": ["SmokeSensor"]
+                },
+                {
+                  "title": "Leak Sensor",
+                  "enum": ["LeakSensor"]
+                },
+                {
                   "title": "Garage Door",
                   "enum": ["GarageDoor"]
                 },
@@ -997,7 +1009,7 @@
               "title": "No battery service",
               "description": "Disable the battery service (use if your controller is mains-powered or doesn't report 'battery_percentage').",
               "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type);"
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem', 'ContactSensor', 'SmokeSensor', 'LeakSensor'].includes(model.devices[arrayIndices].type);"
               }
             },
             "dpBattery": {
@@ -1005,7 +1017,7 @@
               "placeholder": "46 or battery_percentage",
               "title": "Battery data-point (numeric id, or cloud code)",
               "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type) && !model.devices[arrayIndices].noBattery;"
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem', 'ContactSensor', 'SmokeSensor', 'LeakSensor'].includes(model.devices[arrayIndices].type) && !model.devices[arrayIndices].noBattery;"
               }
             },
             "lowBatteryThreshold": {
@@ -1014,7 +1026,7 @@
               "title": "Low-battery threshold (%)",
               "description": "At or below this level HomeKit shows a low-battery warning.",
               "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type) && !model.devices[arrayIndices].noBattery;"
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem', 'ContactSensor', 'SmokeSensor', 'LeakSensor'].includes(model.devices[arrayIndices].type) && !model.devices[arrayIndices].noBattery;"
               }
             },
             "dpCharging": {
@@ -1023,8 +1035,49 @@
               "title": "Charging-status data-point (numeric id, or cloud code)",
               "description": "Boolean data-point reporting whether the battery is charging (e.g. solar / USB-C units). HomeKit shows Charging / Not Charging; if your controller doesn't report this, it shows Not Chargeable.",
               "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem'].includes(model.devices[arrayIndices].type) && !model.devices[arrayIndices].noBattery;"
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['IrrigationSystem', 'ContactSensor', 'SmokeSensor', 'LeakSensor'].includes(model.devices[arrayIndices].type) && !model.devices[arrayIndices].noBattery;"
               }
+            },
+            "dpContact": {
+              "type": ["integer", "string"],
+              "title": "Contact data point",
+              "placeholder": "doorcontact_state",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['ContactSensor'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "dpSmoke": {
+              "type": ["integer", "string"],
+              "title": "Smoke data point",
+              "placeholder": "smoke_sensor_status",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['SmokeSensor'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "dpLeak": {
+              "type": ["integer", "string"],
+              "title": "Leak data point",
+              "placeholder": "watersensor_state",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['LeakSensor'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "dpBatteryState": {
+              "type": ["integer", "string"],
+              "title": "Battery-state data point",
+              "placeholder": "battery_state",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['ContactSensor', 'SmokeSensor', 'LeakSensor'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "batteryDivisor": {
+              "type": "number",
+              "title": "Battery percentage divisor",
+              "placeholder": "1",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['ContactSensor', 'SmokeSensor', 'LeakSensor'].includes(model.devices[arrayIndices].type);"
+              },
+              "minimum": 0.000001
             },
             "dpRainState": {
               "type": ["integer", "string"],

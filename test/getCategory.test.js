@@ -37,6 +37,9 @@ const CLASS_DEF = {
     doorbell: require('../lib/DoorbellAccessory'),
     verticalblindswithtilt: require('../lib/VerticalBlindsWithTilt'),
     percentblinds: require('../lib/PercentBlindsAccessory'),
+    contactsensor: require('../lib/ContactSensorAccessory'),
+    smokesensor: require('../lib/SmokeSensorAccessory'),
+    leaksensor: require('../lib/LeakSensorAccessory'),
 };
 
 const validCategoryValues = new Set(Object.values(Categories));
