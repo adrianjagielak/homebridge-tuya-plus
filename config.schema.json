@@ -116,6 +116,10 @@
                   "enum": ["CustomMultiOutlet"]
                 },
                 {
+                  "title": "Multi-channel Light Switch",
+                  "enum": ["CustomMultiLight"]
+                },
+                {
                   "title": "Air Conditioner",
                   "enum": ["AirConditioner"]
                 },
@@ -429,7 +433,7 @@
                 }
               },
               "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices] && ['CustomMultiOutlet'].includes(model.devices[arrayIndices].type);"
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['CustomMultiOutlet', 'CustomMultiLight'].includes(model.devices[arrayIndices].type);"
               }
             },
             "noCool": {

@@ -17,6 +17,7 @@ const CLASS_DEF = {
     twlight: require('../lib/TWLightAccessory'),
     multioutlet: require('../lib/MultiOutletAccessory'),
     custommultioutlet: require('../lib/CustomMultiOutletAccessory'),
+    custommultilight: require('../lib/CustomMultiLightAccessory'),
     airconditioner: require('../lib/AirConditionerAccessory'),
     airpurifier: require('../lib/AirPurifierAccessory'),
     dehumidifier: require('../lib/DehumidifierAccessory'),
