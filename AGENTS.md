@@ -155,6 +155,12 @@ optional, off-by-default flags read through `_debugConfig()` and coerced with
   without enabling Homebridge's global debug mode. Chatty by design — a
   troubleshooting switch, not for normal operation.
 
+- `debug.logStateChanges` — log every device's data-point changes (from the LAN
+  or the cloud) at `info`, e.g. `Kitchen Light: state changed (lan) → {"1":false}`,
+  plus one `initial state` line per device at startup. Without it the same lines
+  still go to `debug`. A quiet way to keep an on/off history without
+  `logDebugAsInfo`'s protocol noise.
+
 ## Git & PR workflow
 
 - Develop on the branch you've been assigned; never push to `main` directly.
