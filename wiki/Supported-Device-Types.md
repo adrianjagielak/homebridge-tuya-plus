@@ -437,6 +437,7 @@ These are switches that allow turning on and off, and dimming. Three distinct ty
 The following options apply to `WledDimmer` only (they are ignored by `SimpleDimmer`):
 
 - `syncBrightnessToWled`: set to the WLED device IP (e.g. "192.168.1.50" or "192.168.1.50:80") to sync HomeKit brightness changes directly to WLED over HTTP, keeping the Tuya dimmer at 100%. This talks to the WLED controller directly on your **LAN**, independently of how the Tuya dimmer is reached — so if the Tuya dimmer is ever on the cloud fallback (because the LAN is down), the WLED sync is best-effort and may not go through until the LAN is back.
+- `ignoreBrightness`: set to `true` when the Tuya device is only an on/off switch (no brightness data point) but HomeKit brightness should still drive WLED. The plugin never reads or writes `dpBrightness` — it does not force that data point to 100%, and it does not mirror it to WLED. Use this together with `syncBrightnessToWled`. Default: `false`.
 - `presetEffects`: array of effect configs to expose as switches in HomeKit (each turns on a WLED fx preset, optionally with staticColor).
 
 ```json5
@@ -461,6 +462,9 @@ The following options apply to `WledDimmer` only (they are ignored by `SimpleDim
 
     /* WLED sync: forward brightness to a WLED instance instead of using the Tuya dimmer's level */
     "syncBrightnessToWled": "192.168.1.123",
+
+    /* On/off switch with no brightness data point. Brightness still goes to WLED. Default: false */
+    "ignoreBrightness": true,
 
     /* Optional preset effect switches (for WLED) */
     "presetEffects": [
