@@ -38,13 +38,15 @@ describe('index.js UUID seed constants', () => {
         expect(indexSource).toMatch(/const\s+PLUGIN_NAME\s*=\s*'homebridge-tuya-plus'\s*;/);
     });
 
-    test('every UUID.generate(...) call uses UUID_SEED, never PLUGIN_NAME', () => {
-        const calls = indexSource.match(/UUID\.generate\([^)]*\)/g) || [];
-        expect(calls.length).toBeGreaterThan(0);
-        for (const call of calls) {
-            expect(call).toMatch(/UUID_SEED/);
-            expect(call).not.toMatch(/PLUGIN_NAME/);
-        }
+    // All accessory UUIDs go through _accessoryUUID(), whose seed defaults to
+    // UUID_SEED; the optional `uuidSeed` config only applies when set (for
+    // installs migrating from homebridge-tuya 2.x's 'homebridge-tuya-lan').
+    test('UUIDs come from one generator seeded by UUID_SEED, never PLUGIN_NAME', () => {
+        const calls = indexSource.match(/UUID\.generate\(/g) || [];
+        expect(calls).toHaveLength(1);
+        expect(indexSource).toMatch(/_accessoryUUID\(id, fake\) \{\s*return UUID\.generate\(this\._uuidSeed\(\)/);
+        expect(indexSource).toMatch(/return seed \|\| UUID_SEED;/);
+        expect(indexSource).not.toMatch(/UUID\.generate\([^;]*PLUGIN_NAME/);
     });
 });
 

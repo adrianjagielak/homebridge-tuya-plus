@@ -19,6 +19,12 @@
         "placeholder": "Timeout (millisecond) for device IP address discovery",
         "default": 60000
       },
+      "uuidSeed": {
+        "title": "Accessory UUID seed (advanced)",
+        "type": "string",
+        "placeholder": "homebridge-tuya",
+        "description": "Leave empty unless migrating. HomeKit identifies accessories by a UUID built from this seed and the device id; changing it makes every device appear as new in HomeKit. If your devices were first added with homebridge-tuya 2.x, set this to <code>homebridge-tuya-lan</code> to keep them (and their rooms, scenes and automations)."
+      },
       "cloud": {
         "type": "object",
         "title": "Tuya Cloud fallback (optional)",

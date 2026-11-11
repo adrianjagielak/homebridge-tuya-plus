@@ -323,3 +323,42 @@ describe('TuyaLan — removeAccessory hardening', () => {
         expect(platform.cachedAccessories.has('uuid:x')).toBe(false);
     });
 });
+
+describe('TuyaLan — uuidSeed', () => {
+    // HomeKit pairs accessories by UUID, so the seed decides whether an existing
+    // install keeps its accessories. homebridge-tuya 2.x seeded with
+    // 'homebridge-tuya-lan'; those users opt in via uuidSeed to keep them.
+    const lanUUID = (seed, id = 'bf11111111111111') => 'uuid:' + seed + ':' + id;
+
+    test('defaults to the homebridge-tuya seed', () => {
+        const platform = run({devices: [SW()]});
+        expect(platform._expectedUUIDs).toEqual([lanUUID('homebridge-tuya')]);
+        expect(TuyaDevice.mock.calls[0][0].UUID).toBe(lanUUID('homebridge-tuya'));
+    });
+
+    test('a configured seed is used for expected, LAN and fake accessory UUIDs', () => {
+        const platform = run({
+            uuidSeed: 'homebridge-tuya-lan',
+            devices: [SW(), SW({id: 'bf33333333333333', fake: true})]
+        });
+        expect(platform._expectedUUIDs).toEqual([
+            lanUUID('homebridge-tuya-lan'),
+            'uuid:homebridge-tuya-lan:fake:bf33333333333333'
+        ]);
+        expect(TuyaDevice.mock.calls[0][0].UUID).toBe(lanUUID('homebridge-tuya-lan'));
+        expect(TuyaAccessory.mock.calls[0][0].UUID).toBe('uuid:homebridge-tuya-lan:fake:bf33333333333333');
+    });
+
+    test('blank or non-string seeds fall back to the default', () => {
+        for (const uuidSeed of ['   ', '', 42, null]) {
+            jest.clearAllMocks();
+            const platform = run({uuidSeed, devices: [SW()]});
+            expect(platform._expectedUUIDs).toEqual([lanUUID('homebridge-tuya')]);
+        }
+    });
+
+    test('a seed with surrounding whitespace is trimmed', () => {
+        const platform = run({uuidSeed: ' homebridge-tuya-lan ', devices: [SW()]});
+        expect(platform._expectedUUIDs).toEqual([lanUUID('homebridge-tuya-lan')]);
+    });
+});
