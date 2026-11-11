@@ -404,6 +404,20 @@
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['RGBTWLight','RGBTWOutlet','FanLight','WledDimmer', 'SimpleDimmer'].includes(model.devices[arrayIndices].type);"
               }
             },
+            "brightnessMin": {
+              "type": "integer",
+              "placeholder": "10",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['FanLight'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "brightnessMax": {
+              "type": "integer",
+              "placeholder": "1000",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['FanLight'].includes(model.devices[arrayIndices].type);"
+              }
+            },
             "scaleWhiteColor": {
               "type": "integer",
               "placeholder": "255",

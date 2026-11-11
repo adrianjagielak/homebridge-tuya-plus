@@ -955,8 +955,13 @@ These are accessories that combine fan and lighting control in one device. Suppo
     /* Expose a brightness slider. Default: true */
     "useBrightness": true,
 
-    /* Data-point for brightness (Tuya 10–1000 scale). Default: "22" */
+    /* Data-point for brightness. Default: "22" */
     "dpBrightness": 22,
+
+    /* Raw Tuya values for 0 % and 100 % brightness. Defaults: 10 and 1000.
+       Set 0 and 100 for fans whose brightness DP is a plain percentage */
+    "brightnessMin": 10,
+    "brightnessMax": 1000,
 
     /* Expose a colour-temperature control. Default: true */
     "useColorTemp": true,
