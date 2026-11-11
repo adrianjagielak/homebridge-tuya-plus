@@ -172,7 +172,7 @@ class TuyaLan {
     }
 
     this._expectedUUIDs = this.config.devices.map((device) =>
-      UUID.generate(UUID_SEED + (device.fake ? ':fake:' : ':') + device.id),
+      this._accessoryUUID(device.id, device.fake),
     );
 
     this.api.on('didFinishLaunching', () => {
@@ -218,9 +218,7 @@ class TuyaLan {
       // second pass reads back the accessory wrapper the first pass cached
       // instead of a PlatformAccessory and crashes the child bridge while
       // trying to unregister it. Keep the first entry; skip the rest.
-      const uuid = UUID.generate(
-        UUID_SEED + (device.fake ? ':fake:' : ':') + device.id,
-      );
+      const uuid = this._accessoryUUID(device.id, device.fake);
       if (seenUUIDs.has(uuid))
         return this.log.warn(
           '%s (%s) is configured more than once; ignoring the duplicate entry.',
@@ -260,7 +258,7 @@ class TuyaLan {
         new TuyaAccessory({
           ...config,
           log: this.log,
-          UUID: UUID.generate(UUID_SEED + ':fake:' + config.id),
+          UUID: this._accessoryUUID(config.id, true),
           connect: false,
         }),
       );
@@ -372,6 +370,20 @@ class TuyaLan {
       : {};
   }
 
+  // HomeKit identifies accessories by this UUID, so changing the seed makes
+  // every device look brand new (rooms, scenes and automations are lost).
+  // Installs that started on homebridge-tuya 2.x were seeded with
+  // 'homebridge-tuya-lan'; setting `uuidSeed` to that keeps them paired.
+  _accessoryUUID(id, fake) {
+    return UUID.generate(this._uuidSeed() + (fake ? ':fake:' : ':') + id);
+  }
+
+  _uuidSeed() {
+    const seed =
+      typeof this.config.uuidSeed === 'string' ? this.config.uuidSeed.trim() : '';
+    return seed || UUID_SEED;
+  }
+
   // A device showed up on the LAN that isn't in the user's config. When the
   // optional cloud session is available we look the device up there first, so
   // the warning can name it (and hint at its product/category) and the user
@@ -465,7 +477,7 @@ class TuyaLan {
       messaging: usesCloud ? this.cloudMessaging : undefined,
       cloudStartDelay: usesCloud ? this._nextCloudStartDelay() : 0,
       log: this.log,
-      UUID: UUID.generate(UUID_SEED + ':' + device.id),
+      UUID: this._accessoryUUID(device.id, false),
       connect: false,
     });
   }

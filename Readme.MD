@@ -94,6 +94,20 @@ install above for production.
 1. Edit the config.json file to add your device types, and parameters. 
 2. Restart Homebridge
 
+### Migrating from homebridge-tuya 2.x
+
+If your devices were first added to HomeKit with homebridge-tuya 2.x, add `"uuidSeed": "homebridge-tuya-lan"` to the platform config **before** starting this plugin for the first time:
+
+```json
+{
+  "platform": "TuyaLan",
+  "uuidSeed": "homebridge-tuya-lan",
+  "devices": [ ... ]
+}
+```
+
+HomeKit identifies accessories by a UUID built from this seed and the device id. Without it, every device shows up as new and loses its room, scenes and automations. Installs coming from homebridge-tuya 3.x (or that started on this plugin) don't need it.
+
 ## Known Issues
 
 1. If your devices add, but you can't control them, make sure you entered the DataPoint "DP" values for your device. 
