@@ -20,7 +20,7 @@ software with a large existing install base.**
 
 - **Node.js, CommonJS** (`require`/`module.exports`). No TypeScript, no build
   step — the source that ships is the source in the repo.
-- Target runtimes: Node `^20.18 || ^22.10 || ^24`, Homebridge `^1.8 || ^2.0`
+- Target runtimes: Node `^20.18 || ^22.10 || ^24 || ^26`, Homebridge `^1.8 || ^2.0`
   (see `engines` in `package.json`). Keep changes compatible with both
   Homebridge 1.x and 2.x.
 
