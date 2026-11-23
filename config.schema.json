@@ -348,6 +348,15 @@
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['WledDimmer'].includes(model.devices[arrayIndices].type);"
               }
             },
+            "ignoreBrightness": {
+              "title": "Ignore Tuya brightness",
+              "type": "boolean",
+              "placeholder": false,
+              "description": "Enable for an on/off switch that has no brightness data point. HomeKit brightness is sent only to WLED and the Tuya brightness data point is never read or written. Use together with \"Sync brightness to WLED\".",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['WledDimmer'].includes(model.devices[arrayIndices].type);"
+              }
+            },
             "dpColorTemperature": {
               "type": "integer",
               "placeholder": "3",
