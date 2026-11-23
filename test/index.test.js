@@ -220,6 +220,23 @@ describe('TuyaLan — debug.logDebugAsInfo', () => {
     });
 });
 
+describe('TuyaLan — debug.logStateChanges', () => {
+    test('is handed to every device when set', () => {
+        run({debug: {logStateChanges: true}, devices: [SW()]});
+        expect(propsFor('bf11111111111111').logStateChanges).toBe(true);
+    });
+
+    test('lenient boolean spellings are accepted', () => {
+        run({debug: {logStateChanges: 'true'}, devices: [SW()]});
+        expect(propsFor('bf11111111111111').logStateChanges).toBe(true);
+    });
+
+    test('off (or absent) by default', () => {
+        run({devices: [SW()]});
+        expect(propsFor('bf11111111111111').logStateChanges).toBe(false);
+    });
+});
+
 describe('TuyaLan — unconfigured device discovery', () => {
     const UNKNOWN = {id: 'bf99999999999999', ip: '10.0.0.9'};
     const BARE = 'Discovered a device that has not been configured yet (%s@%s).';

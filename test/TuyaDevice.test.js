@@ -142,6 +142,56 @@ describe('TuyaDevice — state merge & registration', () => {
     });
 });
 
+describe('TuyaDevice — state-change logging', () => {
+    const spyLog = () => ({info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn()});
+
+    test('logs the initial state, then only what changed, at debug by default', () => {
+        const spy = spyLog();
+        const dev = makeDevice({log: spy});
+        const lan = fakeBackend({connected: true, state: {'1': true, '2': 50}});
+        withBackends(dev, {lan});
+
+        lan.emit('change');
+        lan.state = {'1': false, '2': 50};
+        lan.emit('change');
+
+        expect(spy.debug).toHaveBeenCalledWith('Lamp: initial state (lan) → {"1":true,"2":50}');
+        expect(spy.debug).toHaveBeenCalledWith('Lamp: state changed (lan) → {"1":false}');
+        expect(spy.info).not.toHaveBeenCalled();
+    });
+
+    test('logStateChanges lifts the lines to info and names the transport', () => {
+        const spy = spyLog();
+        const dev = makeDevice({key: undefined, log: spy, logStateChanges: true}); // cloud-only
+        const cloud = fakeBackend({connected: true, state: {'switch_led': true}});
+        withBackends(dev, {cloud});
+
+        cloud.emit('change');
+        cloud.state = {'switch_led': false};
+        cloud.emit('change');
+
+        expect(spy.info).toHaveBeenCalledWith('Lamp: state changed (cloud) → {"switch_led":false}');
+    });
+
+    test('a report with nothing new logs nothing', () => {
+        const spy = spyLog();
+        const dev = makeDevice({log: spy, logStateChanges: true});
+        const lan = fakeBackend({connected: true, state: {'1': true}});
+        withBackends(dev, {lan});
+
+        lan.emit('change');
+        spy.info.mockClear();
+        lan.emit('change');
+
+        expect(spy.info).not.toHaveBeenCalled();
+    });
+
+    test('the flag stays out of the device context', () => {
+        const dev = makeDevice({logStateChanges: true});
+        expect(dev.context.logStateChanges).toBeUndefined();
+    });
+});
+
 describe('TuyaDevice — writes with fallback', () => {
     test('LAN is used first when both backends are up', async () => {
         const dev = makeDevice();
