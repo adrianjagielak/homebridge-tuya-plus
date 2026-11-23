@@ -38,6 +38,10 @@ that fitting.
 See [Galaxy Link LAN groups](wiki/Galaxy-Link-LAN-Groups.md) for configuration,
 verified hardware, limitations and rollback.
 
+Plugin settings include **Find a Tuya LAN group**. Select a saved Wi-Fi light
+and search a PCAP/PCAPNG capture for its observed group addresses, then review
+and apply a result before saving the normal configuration form.
+
 ## Supported Device Types
 > Click the number next to your device to find the possible DataPoint "DP" values, then add as needed to your config.
 

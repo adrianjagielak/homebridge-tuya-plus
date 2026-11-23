@@ -1,0 +1,20 @@
+<details class="card p-3 mb-3" id="group-search-panel" hidden>
+  <summary class="fw-bold">Find a Tuya LAN group</summary>
+  <p class="mt-3">Select a saved Wi-Fi light and a packet capture recorded while controlling its group in Tuya Smart. The capture is analysed on your Homebridge server using the light's saved local key.</p>
+  <p>This searches observed Tuya 3.3 group commands. It does not query a device's group list or record traffic automatically. Capture on the access point/router or a mirrored port that can see the phone-to-light connection.</p>
+  <label class="form-label" for="group-search-device">Saved light</label>
+  <select class="form-select mb-2" id="group-search-device"></select>
+  <button class="btn btn-outline-secondary btn-sm mb-3" type="button" id="group-search-refresh">Refresh saved lights</button>
+  <label class="form-label" for="group-search-file">Packet capture (.pcap or .pcapng, up to 16 MiB)</label>
+  <input class="form-control mb-3" id="group-search-file" type="file" accept=".pcap,.pcapng">
+  <button class="btn btn-primary mb-3" type="button" id="group-search-run">Search capture</button>
+  <p id="group-search-status" role="status" aria-live="polite"></p>
+  <div id="group-search-results" hidden>
+    <label class="form-label" for="group-search-group">Observed group addresses</label>
+    <select class="form-select mb-3" id="group-search-group"></select>
+    <button class="btn btn-success" type="button" id="group-search-apply">Use selected group</button>
+    <p class="small mt-2">Review the device address before applying. This fills CID and MBID in the configuration form. Click Homebridge's Save button when ready, then restart the Tuya Plus child bridge.</p>
+  </div>
+</details>
+<script src="group-config.js"></script>
+<script src="app.js"></script>

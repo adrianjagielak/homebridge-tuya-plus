@@ -35,6 +35,45 @@ Startup state handling, report filtering, repeated group writes and disabling
 member-only cloud fallback support the shared transport. No separate group
 commands are needed for brightness, colour or white-temperature changes.
 
+## Find group addresses in the setup UI
+
+Open the plugin settings and expand **Find a Tuya LAN group**. The standard
+configuration form remains available below the helper. Save a light's device
+configuration before using the finder; the device list and local key come from
+the saved Homebridge configuration.
+
+1. Select the saved Wi-Fi light.
+2. Record a short capture while changing the existing group in Tuya Smart.
+   Disable phone Bluetooth so the command uses Wi-Fi. If another local
+   controller holds the light's connection, stop that controller for the capture.
+3. Choose the `.pcap` or `.pcapng` file and click **Search capture**.
+4. Review the observed device address, CID and MBID. If several combinations are
+   found, select the group you intended to control.
+5. Click **Use selected group** to fill `lanGroup` in the configuration form,
+   then review and **Save**. Restart the Tuya Plus child bridge.
+
+A capture must see the phone-to-light TCP connection. Record it on the relevant
+access point/router or a mirrored switch port; an ordinary capture on the
+Homebridge host may not see traffic between two other devices. For example,
+on a capture-capable access point/router, replace the example address with the
+Wi-Fi light's address:
+
+```sh
+tcpdump -i any -s 0 -w tuya-group.pcap 'host 192.0.2.50 and tcp port 6668'
+```
+
+The helper accepts captures up to 16 MiB and searches verified Tuya 3.3 command
+13 envelopes with `ctype: 2`, `cid`, `mbid` and DPs. It supports IPv4 TCP
+reassembly, Ethernet/VLAN, raw IP and Linux cooked captures. Results are based
+on valid frame checksums and decryption with the selected light's saved local
+key. No local key, decrypted DPs or raw packets are returned in the result.
+
+This is a capture-assisted finder, not a device group-list query or an automatic
+traffic recorder. It sends no commands to lights and does not save configuration
+automatically. If no compatible group command is present, it returns no group
+rather than guessing an address. Capture analysis runs on the Homebridge server;
+the helper does not send the capture to an external service.
+
 ## Configuration
 
 Add the following fields to the **existing Wi-Fi member's device entry**:
