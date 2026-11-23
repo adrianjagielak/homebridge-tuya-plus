@@ -26,6 +26,18 @@ A community-maintained Homebridge plugin for controlling Tuya devices locally ov
 * [License](#license)
 * [Donating](#donating)
 
+## Galaxy Link LAN groups
+
+Optional `lanGroup` addressing lets an existing light accessory control a
+verified Tuya 3.3 Galaxy Link group through its Wi-Fi member. Power, brightness,
+colour and white-temperature controls reuse the existing light handlers and
+DP mappings. Ordinary devices retain their existing behavior. Group cloud
+fallback is disabled because a cloud command to the Wi-Fi member controls only
+that fitting.
+
+See [Galaxy Link LAN groups](wiki/Galaxy-Link-LAN-Groups.md) for configuration,
+verified hardware, limitations and rollback.
+
 ## Supported Device Types
 > Click the number next to your device to find the possible DataPoint "DP" values, then add as needed to your config.
 

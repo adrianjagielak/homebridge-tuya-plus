@@ -326,6 +326,24 @@
                 "functionBody": "return model.devices && model.devices[arrayIndices] && model.devices[arrayIndices].type === 'OccupancySensor';"
               }
             },
+            "lanGroup": {
+              "type": "object",
+              "title": "Galaxy Link LAN group (optional)",
+              "description": "Only for a verified Tuya 3.3 group. Uses the Wi-Fi member's ID, IP and local key. Group commands remain LAN-only. On/off has been verified on ALUSSO Galaxy Link; other functions need hardware testing.",
+              "required": ["cid", "mbid"],
+              "properties": {
+                "cid": {
+                  "type": "string",
+                  "title": "Group CID",
+                  "pattern": "^[0-9a-fA-F]{4}$"
+                },
+                "mbid": {
+                  "type": "string",
+                  "title": "Group MBID",
+                  "pattern": "^[0-9a-fA-F]{4}$"
+                }
+              }
+            },
             "dpPower": {
               "type": "integer",
               "placeholder": "1",
