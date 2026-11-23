@@ -20,7 +20,7 @@ software with a large existing install base.**
 
 - **Node.js, CommonJS** (`require`/`module.exports`). No TypeScript, no build
   step — the source that ships is the source in the repo.
-- Target runtimes: Node `^20.18 || ^22.10 || ^24`, Homebridge `^1.8 || ^2.0`
+- Target runtimes: Node `^20.18 || ^22.10 || ^24 || ^26`, Homebridge `^1.8 || ^2.0`
   (see `engines` in `package.json`). Keep changes compatible with both
   Homebridge 1.x and 2.x.
 
@@ -154,6 +154,12 @@ optional, off-by-default flags read through `_debugConfig()` and coerced with
   component). Lets a user capture the plugin's verbose protocol/state logging
   without enabling Homebridge's global debug mode. Chatty by design — a
   troubleshooting switch, not for normal operation.
+
+- `debug.logStateChanges` — log every device's data-point changes (from the LAN
+  or the cloud) at `info`, e.g. `Kitchen Light: state changed (lan) → {"1":false}`,
+  plus one `initial state` line per device at startup. Without it the same lines
+  still go to `debug`. A quiet way to keep an on/off history without
+  `logDebugAsInfo`'s protocol noise.
 
 ## Git & PR workflow
 

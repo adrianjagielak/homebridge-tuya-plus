@@ -464,6 +464,7 @@ class TuyaLan {
       cloudApi: usesCloud ? this.cloudApi : undefined,
       messaging: usesCloud ? this.cloudMessaging : undefined,
       cloudStartDelay: usesCloud ? this._nextCloudStartDelay() : 0,
+      logStateChanges: coerceBoolean(this._debugConfig().logStateChanges),
       log: this.log,
       UUID: UUID.generate(UUID_SEED + ':' + device.id),
       connect: false,
