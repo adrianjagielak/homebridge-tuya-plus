@@ -328,7 +328,7 @@
             },
             "lanGroup": {
               "type": "object",
-              "title": "Galaxy Link LAN group (optional)",
+              "title": "Tuya LAN group (optional)",
               "description": "Only for a verified Tuya 3.3 group. Uses the Wi-Fi member's ID, IP and local key. Group commands remain LAN-only. On/off has been verified on ALUSSO Galaxy Link; other functions need hardware testing.",
               "required": ["cid", "mbid"],
               "properties": {
