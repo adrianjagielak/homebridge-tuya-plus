@@ -30,6 +30,8 @@ function makeFanLight(state = {}, context = {}) {
     instance.lightOffCommand = device.context.lightOffCommand || 'Off';
     instance.directionForwardCommand = device.context.directionForwardCommand || 'forward';
     instance.directionReverseCommand = device.context.directionReverseCommand || 'reverse';
+    if (device.context.brightnessMin !== undefined) instance.brightnessMin = parseInt(device.context.brightnessMin);
+    if (device.context.brightnessMax !== undefined) instance.brightnessMax = parseInt(device.context.brightnessMax);
     if (device.context.minWhiteColor !== undefined) instance.minWhiteColor = parseInt(device.context.minWhiteColor);
     if (device.context.maxWhiteColor !== undefined) instance.maxWhiteColor = parseInt(device.context.maxWhiteColor);
 
@@ -487,3 +489,29 @@ describe('SimpleFanLightAccessory — useStringsFan / useStringsLight', () => {
     });
 });
 
+
+describe('SimpleFanLightAccessory brightness conversion', () => {
+    test('defaults to the 10-1000 Tuya range', () => {
+        const { instance } = makeFanLight();
+        expect(instance.convertBrightnessFromHomeKitToTuya(0)).toBe(10);
+        expect(instance.convertBrightnessFromHomeKitToTuya(100)).toBe(1000);
+        expect(instance.convertBrightnessFromTuyaToHomeKit(10)).toBe(0);
+        expect(instance.convertBrightnessFromTuyaToHomeKit(1000)).toBe(100);
+    });
+
+    test('honours a configured 0-100 range', () => {
+        const { instance } = makeFanLight({}, { brightnessMin: 0, brightnessMax: 100 });
+        expect(instance.convertBrightnessFromHomeKitToTuya(50)).toBe(50);
+        expect(instance.convertBrightnessFromHomeKitToTuya(100)).toBe(100);
+        expect(instance.convertBrightnessFromTuyaToHomeKit(100)).toBe(100);
+        expect(instance.convertBrightnessFromTuyaToHomeKit(50)).toBe(50);
+    });
+
+    test('round-trips through a custom range', () => {
+        const { instance } = makeFanLight({}, { brightnessMin: 1, brightnessMax: 255 });
+        for (const pct of [0, 25, 50, 75, 100]) {
+            const tuya = instance.convertBrightnessFromHomeKitToTuya(pct);
+            expect(Math.abs(instance.convertBrightnessFromTuyaToHomeKit(tuya) - pct)).toBeLessThanOrEqual(1);
+        }
+    });
+});
