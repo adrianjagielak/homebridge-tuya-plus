@@ -106,3 +106,38 @@ describe('SimpleBlindsAccessory position estimate', () => {
         expect(instance._getTargetPosition('stop')).toBe(0);
     });
 });
+
+// ---------------------------------------------------------------------------
+// With timeToTighten set, a shut blind sits at minPosition (below 0). Closing
+// it again (e.g. a scene setting 0%) used to read 0 as "above" and open fully.
+// ---------------------------------------------------------------------------
+describe('SimpleBlindsAccessory closing with timeToTighten', () => {
+    test('closing a shut blind does not open it', async () => {
+        const { instance, device } = makeBlinds({ timeToOpen: 15, timeToTighten: 1 }, { 1: 'close' });
+        expect(instance.assumedPosition).toBe(instance.minPosition);
+
+        await instance.setTargetPosition(0);
+
+        expect(device.update).not.toHaveBeenCalledWith({ 1: 'open' });
+        expect(device.update).toHaveBeenLastCalledWith({ 1: 'stop' });
+    });
+
+    test('closing a partly open blind still closes', async () => {
+        const { instance, device } = makeBlinds({ timeToOpen: 15, timeToTighten: 1 });
+        instance.assumedPosition = 50;
+
+        await instance.setTargetPosition(0);
+
+        expect(device.update).toHaveBeenLastCalledWith({ 1: 'close' });
+    });
+
+    test('1% from shut still opens just enough to loosen the slats', async () => {
+        const { instance, device } = makeBlinds({ timeToOpen: 15, timeToTighten: 1 }, { 1: 'close' });
+
+        await instance.setTargetPosition(1);
+
+        expect(device.update).toHaveBeenLastCalledWith({ 1: 'open' });
+        jest.advanceTimersByTime((1 - instance.minPosition) * 15 * 10);
+        expect(device.update).toHaveBeenLastCalledWith({ 1: 'stop' });
+    });
+});
