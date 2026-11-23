@@ -329,6 +329,9 @@
             "lanGroup": {
               "type": "object",
               "title": "Tuya LAN group (optional)",
+              "condition": {
+                "functionBody": "return !!(model && model.devices && model.devices[arrayIndices] && ['SimpleLight', 'TWLight', 'RGBTWLight', 'CustomMultiLight', 'SimpleDimmer', 'SimpleDimmer2', 'WledDimmer'].includes(model.devices[arrayIndices].type));"
+              },
               "description": "Only for a verified Tuya 3.3 group. Uses the Wi-Fi member's ID, IP and local key. Group commands remain LAN-only. On/off has been verified on ALUSSO Galaxy Link; other functions need hardware testing.",
               "required": ["cid", "mbid"],
               "properties": {
