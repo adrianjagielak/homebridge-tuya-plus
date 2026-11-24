@@ -38,9 +38,16 @@ that fitting.
 See [Galaxy Link LAN groups](wiki/Galaxy-Link-LAN-Groups.md) for configuration,
 verified hardware, limitations and rollback.
 
-Plugin settings include **Find a Tuya LAN group**. Select a saved Wi-Fi light
-and search a PCAP/PCAPNG capture for its observed group addresses, then review
-and apply a result before saving the normal configuration form.
+To find a group's `cid` and `mbid`, record a packet capture while switching the
+group in Tuya Smart, then run the bundled finder on the Homebridge server:
+
+```bash
+npx -p homebridge-tuya-plus tuya-lan-group-find --device "Living Room Downlights" tuya-group.pcap
+```
+
+It reads the light's local key and IP from your saved Homebridge config and
+prints the `lanGroup` snippet to add to that device. See the wiki page for the
+capture steps and all options.
 
 ## Supported Device Types
 > Click the number next to your device to find the possible DataPoint "DP" values, then add as needed to your config.

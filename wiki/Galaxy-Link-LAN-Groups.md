@@ -35,22 +35,51 @@ Startup state handling, report filtering, repeated group writes and disabling
 member-only cloud fallback support the shared transport. No separate group
 commands are needed for brightness, colour or white-temperature changes.
 
-## Find group addresses in the setup UI
+## Find group addresses with `tuya-lan-group-find`
 
-Open the plugin settings and expand **Find a Tuya LAN group**. The standard
-configuration form remains available below the helper. Save a light's device
-configuration before using the finder; the device list and local key come from
-the saved Homebridge configuration.
+The plugin ships a command-line finder that reads a packet capture and reports
+the `cid` and `mbid` the Tuya Smart app used to address the group. Run it on the
+Homebridge server (or any machine with Node.js and the capture file).
 
-1. Select the saved Wi-Fi light.
-2. Record a short capture while changing the existing group in Tuya Smart.
-   Disable phone Bluetooth so the command uses Wi-Fi. If another local
-   controller holds the light's connection, stop that controller for the capture.
-3. Choose the `.pcap` or `.pcapng` file and click **Search capture**.
-4. Review the observed device address, CID and MBID. If several combinations are
-   found, select the group you intended to control.
-5. Click **Use selected group** to fill `lanGroup` in the configuration form,
-   then review and **Save**. Restart the Tuya Plus child bridge.
+1. Add the Wi-Fi light to the TuyaLan platform as a normal light and save the
+   config, so the finder can use its local key and IP.
+2. Record a short capture while switching the existing group on and off in
+   Tuya Smart. Disable phone Bluetooth so the command uses Wi-Fi. If another
+   local controller (including Homebridge) holds the light's connection, stop
+   it for the capture.
+3. Run the finder with the light's id or name:
+
+   ```bash
+   npx -p homebridge-tuya-plus tuya-lan-group-find --device "Living Room Downlights" tuya-group.pcap
+   ```
+
+   On a hb-service or Docker install the plugin is already installed, so run
+   it from the Homebridge storage directory to use that copy instead of
+   downloading one (prefix with `sudo` if `config.json` is not readable):
+
+   ```bash
+   cd /var/lib/homebridge && npx tuya-lan-group-find --device "Living Room Downlights" tuya-group.pcap
+   ```
+
+4. Review the reported light address, `cid` and `mbid`. If several
+   combinations are listed, pick the group you intended to control.
+5. Add the printed `lanGroup` block to the light's existing device entry (see
+   [Configuration](#configuration)), save, and restart the Tuya Plus child
+   bridge.
+
+Without `--device`, the finder lists the TuyaLan lights in the config. Options:
+
+| Option | Meaning |
+| --- | --- |
+| `--device <id or name>` | Saved light whose local key, IP and port are used. |
+| `--config <path>` | Homebridge `config.json`. Defaults to `~/.homebridge/config.json`, `/var/lib/homebridge/config.json` or `/homebridge/config.json`, whichever exists. |
+| `--key <key>` | Use this local key instead of reading the config (it ends up in your shell history; prefer `--device`). |
+| `--ip <address>` | Only search traffic to this IPv4 address. Overrides the config. |
+| `--port <port>` | Tuya TCP port, default `6668`. |
+| `--json` | Print the full result, including packet statistics, as JSON. |
+
+It exits with `0` when a group was found, `2` when the capture contained no
+group command (with a hint about what was missing) and `1` on errors.
 
 A capture must see the phone-to-light TCP connection. Record it on the relevant
 access point/router or a mirrored switch port; an ordinary capture on the
@@ -62,17 +91,16 @@ Wi-Fi light's address:
 tcpdump -i any -s 0 -w tuya-group.pcap 'host 192.0.2.50 and tcp port 6668'
 ```
 
-The helper accepts captures up to 16 MiB and searches verified Tuya 3.3 command
-13 envelopes with `ctype: 2`, `cid`, `mbid` and DPs. It supports IPv4 TCP
-reassembly, Ethernet/VLAN, raw IP and Linux cooked captures. Results are based
-on valid frame checksums and decryption with the selected light's saved local
-key. No local key, decrypted DPs or raw packets are returned in the result.
+The finder accepts `.pcap` and `.pcapng` captures up to 16 MiB and searches
+verified Tuya 3.3 command 13 envelopes with `ctype: 2`, `cid`, `mbid` and DPs.
+It supports IPv4 TCP reassembly, Ethernet/VLAN, raw IP and Linux cooked
+captures. Results are based on valid frame checksums and decryption with the
+light's local key. It never prints the local key, decrypted DPs or raw packets.
 
 This is a capture-assisted finder, not a device group-list query or an automatic
-traffic recorder. It sends no commands to lights and does not save configuration
-automatically. If no compatible group command is present, it returns no group
-rather than guessing an address. Capture analysis runs on the Homebridge server;
-the helper does not send the capture to an external service.
+traffic recorder. It sends no commands to lights, works offline and never
+changes your configuration. If no compatible group command is present, it
+reports no group rather than guessing an address.
 
 ## Configuration
 

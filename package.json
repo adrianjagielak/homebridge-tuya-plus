@@ -5,13 +5,14 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
-    "lint": "eslint index.js lib/**.js bin/**.js homebridge-ui/server.js homebridge-ui/public/*.js",
+    "lint": "eslint index.js lib/**.js bin/**.js",
     "cleanup:pr-tags": "node scripts/cleanup-pr-tags.js"
   },
   "bin": {
     "tuya-lan": "./bin/cli.js",
     "tuya-lan-find": "./bin/cli-find.js",
-    "tuya-lan-decode": "./bin/cli-decode.js"
+    "tuya-lan-decode": "./bin/cli-decode.js",
+    "tuya-lan-group-find": "./bin/cli-group-find.js"
   },
   "repository": {
     "type": "git",
@@ -31,8 +32,7 @@
     "json5": "^2.2.0",
     "mqtt": "^5.15.1",
     "qrcode": "^1.4.1",
-    "yaml": "^1.6.0",
-    "@homebridge/plugin-ui-utils": "^2.3.0"
+    "yaml": "^1.6.0"
   },
   "keywords": [
     "homebridge-plugin",
