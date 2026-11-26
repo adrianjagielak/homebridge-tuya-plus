@@ -227,24 +227,6 @@
                 "functionBody": "return model.devices && model.devices[arrayIndices].type !== 'null';"
               }
             },
-            "version": {
-              "title": "Tuya protocol version",
-              "type": "string",
-              "placeholder": "e.g. 3.3",
-              "description": "Leave empty to auto-detect. Used when the device cannot be discovered (e.g. fixed IP across subnets). Supported: 3.1, 3.2, 3.3, 3.4, 3.5 (newer reported versions such as 3.6 are handled with the 3.5 stack automatically).",
-              "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices].type !== 'null';"
-              }
-            },
-            "forceVersion": {
-              "title": "Force Tuya protocol version",
-              "type": "string",
-              "placeholder": "e.g. 3.5",
-              "description": "Overrides the protocol version even when the device broadcasts a different one. Only set this if a device misbehaves with its auto-detected version.",
-              "condition": {
-                "functionBody": "return model.devices && model.devices[arrayIndices].type !== 'null';"
-              }
-            },
             "manufacturer": {
               "type": "string",
               "description": "Anything you'd like to use to help identify this device.",
@@ -324,6 +306,45 @@
               "placeholder": "104",
               "condition": {
                 "functionBody": "return model.devices && model.devices[arrayIndices] && model.devices[arrayIndices].type === 'OccupancySensor';"
+              }
+            },
+            "lanGroup": {
+              "type": "object",
+              "title": "Tuya LAN group (optional)",
+              "condition": {
+                "functionBody": "return !!(model && model.devices && model.devices[arrayIndices] && ['SimpleLight', 'TWLight', 'RGBTWLight', 'CustomMultiLight', 'SimpleDimmer', 'SimpleDimmer2', 'WledDimmer'].includes(model.devices[arrayIndices].type));"
+              },
+              "description": "Only for a verified Tuya 3.3 group. Uses the Wi-Fi member's ID, IP and local key. Group commands remain LAN-only. On/off has been verified on ALUSSO Galaxy Link; other functions need hardware testing. Find the CID and MBID in a packet capture with: npx -p homebridge-tuya-plus tuya-lan-group-find --device <light id> capture.pcap (see the Galaxy Link LAN groups wiki page).",
+              "required": ["cid", "mbid"],
+              "properties": {
+                "cid": {
+                  "type": "string",
+                  "title": "Group CID",
+                  "pattern": "^[0-9a-fA-F]{4}$"
+                },
+                "mbid": {
+                  "type": "string",
+                  "title": "Group MBID",
+                  "pattern": "^[0-9a-fA-F]{4}$"
+                }
+              }
+            },
+            "version": {
+              "title": "Tuya protocol version",
+              "type": "string",
+              "placeholder": "e.g. 3.3",
+              "description": "Leave empty to auto-detect. Used when the device cannot be discovered (e.g. fixed IP across subnets). Supported: 3.1, 3.2, 3.3, 3.4, 3.5 (newer reported versions such as 3.6 are handled with the 3.5 stack automatically).",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices].type !== 'null';"
+              }
+            },
+            "forceVersion": {
+              "title": "Force Tuya protocol version",
+              "type": "string",
+              "placeholder": "e.g. 3.5",
+              "description": "Overrides the protocol version even when the device broadcasts a different one. Only set this if a device misbehaves with its auto-detected version.",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices].type !== 'null';"
               }
             },
             "dpPower": {

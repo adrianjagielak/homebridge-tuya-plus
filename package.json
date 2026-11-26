@@ -11,7 +11,8 @@
   "bin": {
     "tuya-lan": "./bin/cli.js",
     "tuya-lan-find": "./bin/cli-find.js",
-    "tuya-lan-decode": "./bin/cli-decode.js"
+    "tuya-lan-decode": "./bin/cli-decode.js",
+    "tuya-lan-group-find": "./bin/cli-group-find.js"
   },
   "repository": {
     "type": "git",
